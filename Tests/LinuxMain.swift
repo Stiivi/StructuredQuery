@@ -1,6 +1,8 @@
 import XCTest
-@testable import StructuredQueryTests
+@testable import CompilerTests
+@testable import ExpressionTests
 
 XCTMain([
-     testCase(StructuredQueryTests.allTests),
+     testCase(CompilerTests.allTests),
+     testCase(ExpressionTests.allTests),
 ])

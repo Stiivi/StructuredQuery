@@ -42,7 +42,7 @@ class ExpressionCompilerTestCase: XCTestCase {
 		let e: Expression = 1
 		let b: Expression = true
 
-		XCTAssertEqual(compile(-e), "-1")
-		XCTAssertEqual(compile(!b), "NOT b")
+		XCTAssertEqual(compile(-e), "- 1")
+		XCTAssertEqual(compile(!b), "NOT true")
 	}
 }

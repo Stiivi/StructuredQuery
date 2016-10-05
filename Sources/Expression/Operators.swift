@@ -1,87 +1,162 @@
-public enum BinaryOperator: CustomStringConvertible {
-	case add
-	case sub
-	case mul
-	case div
-	case mod
-	case exp
+/// Definitions of operator signatures
+//
+// This is not the best solution, but works for now
+//
 
-	case bitand
-	case bitor
-	case bitxor
-	case shl
-	case shr
+public let NullBinarySignatures = [
+	FunctionSignature(arguments: [DataType.NULL, DataType.ANY], returnType: DataType.NULL),
+	FunctionSignature(arguments: [DataType.ANY, DataType.NULL], returnType: DataType.NULL)
+]
 
-	case and
-	case or
+public let ArithmeticOperatorSignatures = [
+	FunctionSignature(arguments: [INTEGER, INTEGER], returnType: INTEGER),
+	FunctionSignature(arguments: [DOUBLE, DOUBLE], returnType: DOUBLE),
+	FunctionSignature(arguments: [INTEGER, DOUBLE], returnType: DOUBLE),
+	FunctionSignature(arguments: [DOUBLE, INTEGER], returnType: DOUBLE)
+]
 
-	case eq
-	case ne
-	case lt
-	case le
-	case gt
-	case ge
+public let BooleanBinarySignatures = [
+	FunctionSignature(arguments: [BOOLEAN, BOOLEAN], returnType: BOOLEAN)
+]
 
-	case concat
-	case like
+public let BooleanUnarySignatures = [
+	FunctionSignature(arguments: [BOOLEAN], returnType: BOOLEAN)
+]
 
-	case `in`
-	case notin
+public let NumericUnarySignatures = [
+	FunctionSignature(arguments: [INTEGER], returnType: INTEGER),
+	FunctionSignature(arguments: [DOUBLE], returnType: DOUBLE)
+]
 
-	public var description: String {
-		switch self {
-		case .add    : return "+"
-		case .sub    : return "-"
-		case .mul    : return "*"
-		case .div    : return "/"
-		case .mod    : return "%"
-		case .exp    : return "^"
+public let ExistenceSignatures = [
+	FunctionSignature(arguments: [DataType.ANY], returnType: BOOLEAN),
+]
 
-		case .bitand  : return "&"
-		case .bitor   : return "|"
-		case .bitxor  : return "#"
-		case .shl    : return "<<"
-		case .shr    : return ">>"
+public let TextOperatorSignatures = [
+	FunctionSignature(arguments: [TEXT, TEXT], returnType: TEXT)
+]
 
-		case .and    : return "AND"
-		case .or     : return "OR"
+public let BasicBinarySignatures: Dictionary<String,[FunctionSignature]> = [
+	"add": ArithmeticOperatorSignatures,
+	"sub": ArithmeticOperatorSignatures,
+	"mul": ArithmeticOperatorSignatures,
+	"div": ArithmeticOperatorSignatures,
+	"mod": ArithmeticOperatorSignatures,
+	"exp": ArithmeticOperatorSignatures,
 
-		case .eq     : return "="
-		case .ne     : return "!="
-		case .lt     : return "<"
-		case .le     : return "<="
-		case .gt     : return ">"
-		case .ge     : return ">="
+	"bitand": [],
+	"bitor": [],
+	"bitxor": [],
+	"shl": [],
+	"shr": [],
 
-		case .concat : return "||"
-		case .like   : return "LIKE"
+	"and": BooleanBinarySignatures,
+	"or": BooleanBinarySignatures,
 
-		case .`in`   : return "IN"
-		case .notin  : return "NOT IN"
-		}
+	"eq": BooleanBinarySignatures,
+	"ne": BooleanBinarySignatures,
+	"lt": BooleanBinarySignatures,
+	"le": BooleanBinarySignatures,
+	"gt": BooleanBinarySignatures,
+	"ge": BooleanBinarySignatures,
 
-	}
-}
-public enum UnaryOperator: CustomStringConvertible {
-	// Unary
+	"concat": TextOperatorSignatures,
+	"like": TextOperatorSignatures,
 
-	case neg
-	case not
-	case bitnot
-	case exists
-	case distinct
-	case any
-	
-	public var description: String {
-		switch self {
-		case .neg       : return "-"
-		case .not       : return "NOT"
-		case .bitnot    : return "~"
-		case .exists    : return "EXISTS"
-		case .distinct  : return "DISTINCT"
-		case .any       : return "ANY"
-		}
+	"in": [],
+	"notin": []
+]
 
-	}
+public let BasicUnarySignatures: Dictionary<String,[FunctionSignature]> = [
+	"neg": NumericUnarySignatures,
+	"not": BooleanUnarySignatures,
+	"bitnot": [],
+	"exists": ExistenceSignatures,
+	"distinct": [],
+	"any": ExistenceSignatures
+]
+
+// Arithmetic Operators
+//
+func +(left: Expression, right: Expression) -> Expression {
+	return .binary("add", left, right)
 }
 
+func -(left: Expression, right: Expression) -> Expression {
+	return .binary("sub", left, right)
+}
+
+func *(left: Expression, right: Expression) -> Expression {
+	return .binary("mul", left, right)
+}
+
+func /(left: Expression, right: Expression) -> Expression {
+	return .binary("div", left, right)
+}
+
+func %(left: Expression, right: Expression) -> Expression {
+	return .binary("mod", left, right)
+}
+
+
+// Comparison Operators
+//
+func ==(left: Expression, right: Expression) -> Expression {
+	return .binary("eq", left, right)
+}
+
+func !=(left: Expression, right: Expression) -> Expression {
+	return .binary("neq", left, right)
+}
+
+infix operator <>: ComparisonPrecedence
+func <>(left: Expression, right: Expression) -> Expression {
+	return .binary("neq", left, right)
+}
+
+func <(left: Expression, right: Expression) -> Expression {
+	return .binary("lt", left, right)
+}
+
+func <=(left: Expression, right: Expression) -> Expression {
+	return .binary("le", left, right)
+}
+
+func >(left: Expression, right: Expression) -> Expression {
+	return .binary("gt", left, right)
+}
+
+func >=(left: Expression, right: Expression) -> Expression {
+	return .binary("ge", left, right)
+}
+
+// TODO: Question: should we follow the "swift" convention of these operators
+// or the target (SQL) expression of the operators?
+func ||(left: Expression, right: Expression) -> Expression {
+	return .binary("or", left, right)
+}
+
+func &&(left: Expression, right: Expression) -> Expression {
+	return .binary("and", left, right)
+}
+
+func &(left: Expression, right: Expression) -> Expression {
+	return .binary("bitand", left, right)
+}
+
+func |(left: Expression, right: Expression) -> Expression {
+	return .binary("bitor", left, right)
+}
+
+// Unary
+prefix func -(right: Expression) -> Expression {
+	return .unary("neg", right)
+}
+
+prefix func !(right: Expression) -> Expression {
+	return .unary("not", right)
+}
+
+prefix func ~(right: Expression) -> Expression {
+	return .unary("bitnot", right)
+}
