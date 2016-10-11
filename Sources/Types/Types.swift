@@ -65,6 +65,7 @@ public func ==(lhs: DataType, rhs: DataType) -> Bool {
 	return lhs.fullyQualifiedName == rhs.fullyQualifiedName
 }
 
+// TODO: Make an enum of known error data types
 public class ErrorDataType: DataType {
 	let message: String
 
@@ -95,7 +96,7 @@ public class FunctionSignature: CustomStringConvertible {
 	public let arguments: [DataType]
 	public let returnType: DataType
 
-	init(arguments: [DataType], returnType: DataType) {
+	public init(arguments: [DataType], returnType: DataType) {
 		self.arguments = arguments
 		self.returnType = returnType
 	}

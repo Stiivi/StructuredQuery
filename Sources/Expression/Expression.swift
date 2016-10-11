@@ -1,3 +1,5 @@
+import Schema
+
 /// SQL Expression.
 ///
 /// Core data type that represents multiple types of a SQL expression nodes:
@@ -24,6 +26,36 @@ public indirect enum Expression: Equatable {
 	// EXTRACT
 
 	case label(Expression, String)
+	// case column(Column)
+
+	case tableColumn(String, Table)
+	case tablelikeColumn(String, Tablelike)
+
+	public var alias: String? {
+		switch self {
+		case let .label(_, value): return value
+		default: return nil
+		}
+	}
+}
+
+extension Table: ColumnExpressionListable {
+	public var columnExpressions: ColumnExpressionList {
+		// TODO: ColumnExpressionList
+		let expressions:[Expression] = columnDescriptions.map {
+			.tableColumn($0.name, self)
+		}
+
+		return ColumnExpressionList(expressions) {
+			$0.alias
+		}
+	}
+
+	/// Get the first column with name `name` if exists. Otherwise returns nil.
+	public subscript(name: String) -> Expression? {
+		return columnDescriptions.first { $0.name == name }
+					  .map { .tableColumn($0.name, self) } 
+	}
 }
 
 

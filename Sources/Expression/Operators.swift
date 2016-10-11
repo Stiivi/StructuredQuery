@@ -1,3 +1,5 @@
+import Types
+
 /// Definitions of operator signatures
 //
 // This is not the best solution, but works for now

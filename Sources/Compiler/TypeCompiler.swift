@@ -1,3 +1,5 @@
+import Types
+import Schema
 import Expression
 
 /// Expression compiler that returns expression's data type.
@@ -63,6 +65,37 @@ public class TypeCompiler: ExpressionVisitor {
 
 		return match.map { $0.returnType }
 				?? ErrorDataType(message: "Unable to match function '\(function)'")
+	}
+
+	public func visit(column name: String, inTable table: Table) -> VisitorResult {
+		let columns = table.columnDescriptions
+		if columns.duplicateKeys.contains(name) {
+			// TODO: Add table name to the error
+			return ErrorDataType(message: "Duplicate column '\(name)'")
+		}
+		else if let column = columns[name] {
+			return column.type
+		}
+		else {
+			// TODO: Add table name to the error
+			return ErrorDataType(message: "Unknown column \(name)")
+		}
+	}
+
+	public func visit(column name: String,inTablelike tablelike: Tablelike) -> VisitorResult {
+		// 
+		let expressions = tablelike.columnExpressions
+		if expressions.duplicateKeys.contains(name) {
+			// TODO: Add table name to the error
+			return ErrorDataType(message: "Duplicate column expression '\(name)'")
+		}
+		else if let expression = expressions[name] {
+			return visit(expression: expression)
+		}
+		else {
+			// TODO: Add table name to the error
+			return ErrorDataType(message: "Unknown column \(name)")
+		}
 	}
 
 	public func visit(parameter: String) -> VisitorResult {

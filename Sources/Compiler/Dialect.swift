@@ -1,3 +1,4 @@
+import Types
 import Expression
 
 /// Protocol that specifies a SQL dialect properties.

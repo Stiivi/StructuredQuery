@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import Expression
+@testable import Types
 
 class DataTypeTestCase: XCTestCase {
 

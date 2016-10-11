@@ -1,3 +1,5 @@
+import Schema
+
 /// Type that visits nodes in a SQL expression and returns `VisitorResult`
 public protocol ExpressionVisitor {
 	associatedtype VisitorResult
@@ -12,6 +14,8 @@ public protocol ExpressionVisitor {
 	func visit(unary op: String, _ arg: Expression) -> VisitorResult
 	func visit(function: String, _ args: [Expression]) -> VisitorResult
 	func visit(parameter: String) -> VisitorResult
+	func visit(column: String, inTable: Table) -> VisitorResult
+	func visit(column: String, inTablelike: Tablelike) -> VisitorResult
 }
 
 /// Default implementation of the top level entry function that dispatches
@@ -39,6 +43,10 @@ extension ExpressionVisitor {
 			out = self.visit(function: name, args)
 		case let .parameter(name):
 			out = self.visit(parameter: name)
+		case let .tableColumn(name, table):
+			out = self.visit(column: name, inTable: table)
+		case let .tablelikeColumn(name, table):
+			out = self.visit(column: name, inTablelike: table)
 		}
 
 		return out

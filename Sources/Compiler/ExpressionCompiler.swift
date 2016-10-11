@@ -1,3 +1,4 @@
+import Schema
 import Expression
 import Foundation
 
@@ -70,6 +71,17 @@ public class ExpressionCompiler: ExpressionVisitor {
 
 		let argstring = argstrings.joined(separator: ", ")
 		return "\(function)(\(argstring))"
+	}
+
+	public func visit(column: String, inTable table: Table) -> VisitorResult {
+		// TODO: identifier formatter
+		return "\(table.name).\(column)"
+	}
+
+	public func visit(column: String, inTablelike table: Tablelike) -> VisitorResult {
+		// TODO: identifier formatter
+		// TODO: What about multiple unnamed tables?
+		return "\(table.name).\(column)"
 	}
 
 	public func visit(parameter: String) -> VisitorResult {
