@@ -46,6 +46,11 @@ public class PropertyLookupArray<T, Key> : Collection  where Key: Hashable {
         self.duplicateKeys = dupes
     }
 
+	/// Creates an empty lookp array.
+	convenience public init() {
+		self.init([]) { _ in nil }
+	}
+
     // Collection protocol methods
     public var startIndex: Index { return array.startIndex }
     public var endIndex: Index { return array.endIndex }

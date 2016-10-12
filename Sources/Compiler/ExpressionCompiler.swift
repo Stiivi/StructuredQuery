@@ -78,10 +78,10 @@ public class ExpressionCompiler: ExpressionVisitor {
 		return "\(table.name).\(column)"
 	}
 
-	public func visit(column: String, inTablelike table: Tablelike) -> VisitorResult {
+	public func visit(column: String, inRelation relation: Relation) -> VisitorResult {
 		// TODO: identifier formatter
 		// TODO: What about multiple unnamed tables?
-		return "\(table.name).\(column)"
+		return "\(relation.name).\(column)"
 	}
 
 	public func visit(parameter: String) -> VisitorResult {

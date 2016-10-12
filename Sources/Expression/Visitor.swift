@@ -15,7 +15,7 @@ public protocol ExpressionVisitor {
 	func visit(function: String, _ args: [Expression]) -> VisitorResult
 	func visit(parameter: String) -> VisitorResult
 	func visit(column: String, inTable: Table) -> VisitorResult
-	func visit(column: String, inTablelike: Tablelike) -> VisitorResult
+	func visit(column: String, inRelation: Relation) -> VisitorResult
 }
 
 /// Default implementation of the top level entry function that dispatches
@@ -37,7 +37,7 @@ extension ExpressionVisitor {
 			out = self.visit(binary: op, left, right)
 		case let .unary(op, arg):
 			out = self.visit(unary: op, arg)
-		case let .label(expr, _):
+		case let .alias(expr, _):
 			out = self.visit(expression: expr)
 		case let .function(name, args):
 			out = self.visit(function: name, args)
@@ -45,8 +45,8 @@ extension ExpressionVisitor {
 			out = self.visit(parameter: name)
 		case let .tableColumn(name, table):
 			out = self.visit(column: name, inTable: table)
-		case let .tablelikeColumn(name, table):
-			out = self.visit(column: name, inTablelike: table)
+		case let .relationColumn(name, relation):
+			out = self.visit(column: name, inRelation: relation)
 		}
 
 		return out

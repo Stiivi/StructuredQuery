@@ -2,6 +2,8 @@ import XCTest
 
 @testable import Expression
 
+// TODO: name for alias, tableColumn, tablelikeColumn
+
 class ExpressionTestCase: XCTestCase {
 
 	func testNullLiteral(){

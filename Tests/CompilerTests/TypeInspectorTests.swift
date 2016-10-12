@@ -4,10 +4,10 @@ import XCTest
 @testable import Expression
 @testable import Compiler
 
-class TypeCompilerTestCase: XCTestCase {
+class TypeInspectorTestCase: XCTestCase {
 	func compile(_ expression: Expression) -> DataType {
-		let compiler = TypeCompiler()
-		return compiler.visit(expression: expression)
+		let inspector = TypeInspector()
+		return inspector.visit(expression: expression)
 	}
 
 	func testVisitNull() {

@@ -20,44 +20,24 @@ public indirect enum Expression: Equatable {
 	// Bind parameter
 	case parameter(String)
 
-	// TODO:
-	// CASE
-	// CAST
-	// EXTRACT
-
-	case label(Expression, String)
+	case alias(Expression, String)
 	// case column(Column)
 
 	case tableColumn(String, Table)
-	case tablelikeColumn(String, Tablelike)
+	case relationColumn(String, Relation)
 
-	public var alias: String? {
+	// TODO: case, cast, extract
+
+	public var name: String? {
 		switch self {
-		case let .label(_, value): return value
+		case let .alias(_, value): return value
+		case let .tableColumn(name, _): return name
+		case let .relationColumn(name, _): return name
 		default: return nil
 		}
 	}
+
 }
-
-extension Table: ColumnExpressionListable {
-	public var columnExpressions: ColumnExpressionList {
-		// TODO: ColumnExpressionList
-		let expressions:[Expression] = columnDescriptions.map {
-			.tableColumn($0.name, self)
-		}
-
-		return ColumnExpressionList(expressions) {
-			$0.alias
-		}
-	}
-
-	/// Get the first column with name `name` if exists. Otherwise returns nil.
-	public subscript(name: String) -> Expression? {
-		return columnDescriptions.first { $0.name == name }
-					  .map { .tableColumn($0.name, self) } 
-	}
-}
-
 
 public func ==(left: Expression, right: Expression) -> Bool {
 	switch (left, right) {
@@ -69,7 +49,7 @@ public func ==(left: Expression, right: Expression) -> Bool {
 				where lop == rop && lv1 == rv1 && lv2 == rv2: return true
 	case let(.unary(lop, lv), .unary(rop, rv))
 				where lop == rop && lv == rv: return true
-	case let(.label(lval), .label(rval)) where lval == rval: return true
+	case let(.alias(lval), .alias(rval)) where lval == rval: return true
 	case let(.function(lname, largs), .function(rname, rargs))
 				where lname == rname && largs == rargs: return true
 	case let(.parameter(lval), .parameter(rval)) where lval == rval: return true

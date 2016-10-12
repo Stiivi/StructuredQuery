@@ -3,7 +3,7 @@ import Schema
 import Expression
 
 /// Expression compiler that returns expression's data type.
-public class TypeCompiler: ExpressionVisitor {
+public class TypeInspector: ExpressionVisitor {
 	public typealias VisitorResult = DataType
 
 	let dialect: Dialect
@@ -82,9 +82,9 @@ public class TypeCompiler: ExpressionVisitor {
 		}
 	}
 
-	public func visit(column name: String,inTablelike tablelike: Tablelike) -> VisitorResult {
+	public func visit(column name: String,inRelation relation: Relation) -> VisitorResult {
 		// 
-		let expressions = tablelike.columnExpressions
+		let expressions = relation.columnExpressions
 		if expressions.duplicateKeys.contains(name) {
 			// TODO: Add table name to the error
 			return ErrorDataType(message: "Duplicate column expression '\(name)'")
