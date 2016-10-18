@@ -11,9 +11,9 @@ class TableTestCase: XCTestCase {
 			Column("value", INTEGER)
 		)
 
-		XCTAssertEqual(table.columnDescriptions.count, 3)
+		XCTAssertEqual(table.columnDefinitions.count, 3)
 
-		let columns = table.columnDescriptions
+		let columns = table.columnDefinitions
 
 		XCTAssertEqual(columns[1].name, "name")
 		XCTAssertEqual(columns["name"]!.name, "name")
@@ -30,10 +30,10 @@ class TableTestCase: XCTestCase {
 			Column("other", TEXT)
 		)
 
-		let columns = table.columnDescriptions
+		let columns = table.columnDefinitions
 		XCTAssertEqual(columns.count, 6)
-		XCTAssertEqual(columns.duplicateKeys.count, 2)
-		XCTAssertEqual(columns.duplicateKeys, ["name", "other"])
+		XCTAssertEqual(columns.ambiguous.count, 2)
+		XCTAssertEqual(columns.ambiguous, ["name", "other"])
 
 		// Should not be TEXT
 		XCTAssertEqual(columns["other"]!.type, INTEGER)

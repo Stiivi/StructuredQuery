@@ -1,49 +1,46 @@
 /// Ordered collection of elements which can be subscriptable by a custom key.
-/// Only the first element with given key is accessible. Information about
-/// duplicate keys is included.
-public class PropertyLookupArray<T, Key> : Collection  where Key: Hashable {
-    public typealias ArrayType = Array<T>
-    public typealias Index = ArrayType.Index
+/// Only elements with unique keys are accessible. Duplicate keys are
+/// considered to be amibuous.
+public final class LookupList<Key, Value> : Equatable
+		where Value: Equatable, Key: Hashable {
+    public typealias Index = Array<Value>.Index
     //    typealias Index = Int
 
-    typealias LookupType = [Key:Index]
+	// Elements of the array
+    let items: [(key:Key?, value:Value)]
+    let lookup: [Key:Index]
+	/// Set of keys that were not unique
+	public let ambiguous: Set<Key>
 
-    let array: ArrayType
-    let lookup: LookupType
-
-	/// List of keys that were present in multiple elements
-    public let duplicateKeys: Set<Key>
-
-	/// Creates a new array from elements. Uses the `getKey` function to
+	/// Creates a new array from elements. Uses the `extract` function to
 	/// extract a key from an enelement, that will be used to access the element
 	/// through subscript.
 	///
-	/// If the `getKey` function returns `nil` then the element will not be
+	/// If the `extract` function returns `nil` then the element will not be
 	/// indexed in the lookup table.
-    public init(_ elements: ArrayType, getKey: @escaping (ArrayType.Element) -> Key?) {
-        self.array = elements
+    public init(_ values: [Value], extract: @escaping (Value) -> Key?) {
+        var mapFirst = [Key:Index]()
+		var seen = Set<Key>()
+		var duplicates = Set<Key>()
 
-        var lookup = LookupType()
-        var dupes = Set<Key>()
+        self.items = values.map { (key:extract($0), value:$0) }
 
-        elements.enumerated().forEach {
-            index, element in
+		items.enumerated().forEach {
+			index, item in
 
 			// Are we indexing the property?
-            if let key = getKey(element) {
-				// Is the key indexed already?
-				if lookup[key] == nil {
-					lookup[key] = index
+            if let key = item.key {
+				let (isNew, _) = seen.insert(key)
+				if isNew {
+					mapFirst[key] = index
 				}
 				else {
-					// Already present
-					dupes.insert(key)
+					duplicates.insert(key)
 				}
 			}
         }
-
-        self.lookup = lookup
-        self.duplicateKeys = dupes
+		self.ambiguous = duplicates
+        self.lookup = mapFirst
     }
 
 	/// Creates an empty lookp array.
@@ -51,20 +48,44 @@ public class PropertyLookupArray<T, Key> : Collection  where Key: Hashable {
 		self.init([]) { _ in nil }
 	}
 
-    // Collection protocol methods
-    public var startIndex: Index { return array.startIndex }
-    public var endIndex: Index { return array.endIndex }
-    public func index(after: Index) -> Index {
-        return array.index(after: after)
-    }
+	/// List of valid (not nil) keys. Might contain duplicates, if they were
+	/// present in the original collection.
+	public var keys: [Key] {
+		return items.flatMap { $0.key }
+	} 
 
-    public subscript(index: ArrayType.Index) -> ArrayType.Element {
-        return array[index]
-    }
+	/// Contains value `true` if the collection has values for which the key
+	/// can not be determined (is nil).
+	public var hasAnonymousValues: Bool {
+		return items.contains { $0.key == nil  }
+	}
 
 	/// Gets the first element in the array which has the `key`.
-    public subscript(key: Key) -> ArrayType.Element? {
-        return lookup[key].map { array[$0] }
+    public subscript(key: Key) -> Array<Value>.Element? {
+        return lookup[key].map { items[$0].value }
+    }
+}
+
+
+extension LookupList: Collection {
+
+    // Collection protocol methods
+    public var startIndex: Index { return items.startIndex }
+    public var endIndex: Index { return items.endIndex }
+    public func index(after: Index) -> Index {
+        return items.index(after: after)
     }
 
+    public subscript(index: Array<Value>.Index) -> Array<Value>.Element {
+        return items[index].value
+    }
+
+}
+
+public func ==<Key: Hashable, Value: Equatable>(lhs: LookupList<Key, Value>,
+		rhs: LookupList<Key, Value>) -> Bool {
+	return lhs.items.elementsEqual(rhs.items) {
+		left, right in
+		left.key == right.key && left.value == right.value
+	}
 }

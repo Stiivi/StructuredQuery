@@ -1,24 +1,34 @@
 import Basic
 import Types
 
-public typealias ColumnList = PropertyLookupArray<Column,String>
+public typealias ColumnList = LookupList<String, Column>
 
-public class Table {
+public class Table: Hashable {
 	public let name: String
 	public let schema: String?
-	public let columnDescriptions: ColumnList
+	public let columnDefinitions: ColumnList
 
 	public init(_ name: String, schema: String?=nil, columns: [Column] ) {
 		self.name = name
 		self.schema = schema
-		self.columnDescriptions = ColumnList(columns) { $0.name }
+		self.columnDefinitions = ColumnList(columns) { $0.name }
 	}
 	public convenience init(_ name: String, schema: String?=nil, _ columns: Column... ) {
 		self.init(name, schema: schema, columns: columns)
 	}
+
+	public var hashValue: Int {
+		return name.hashValue ^ (schema.map { $0.hashValue } ?? 0)
+	}
 }
 
-public class Column {
+public func ==(lhs: Table, rhs: Table) -> Bool {
+	return lhs.name == rhs.name
+			&& lhs.schema == rhs.schema
+			&& lhs.columnDefinitions == rhs.columnDefinitions
+}
+
+public class Column: Equatable {
 	public let name: String
 	public let type: DataType
 
@@ -28,3 +38,6 @@ public class Column {
 	}
 }
 
+public func ==(lhs: Column, rhs: Column) -> Bool {
+	return lhs.name == rhs.name && lhs.type == rhs.type
+}

@@ -1,3 +1,4 @@
+import Basic
 import Types
 import Schema
 import Expression
@@ -68,8 +69,8 @@ public class TypeInspector: ExpressionVisitor {
 	}
 
 	public func visit(column name: String, inTable table: Table) -> VisitorResult {
-		let columns = table.columnDescriptions
-		if columns.duplicateKeys.contains(name) {
+		let columns = table.columnDefinitions
+		if columns.ambiguous.contains(name) {
 			// TODO: Add table name to the error
 			return ErrorDataType(message: "Duplicate column '\(name)'")
 		}
@@ -82,9 +83,10 @@ public class TypeInspector: ExpressionVisitor {
 		}
 	}
 
-	public func visit(column name: String,inRelation relation: Relation) -> VisitorResult {
+	public func visit(columnReference ref: ColumnReference) -> VisitorResult {
 		// 
-		let expressions = relation.columnExpressions
+		/*
+		let expressions = ref.tableExpression.selectable.
 		if expressions.duplicateKeys.contains(name) {
 			// TODO: Add table name to the error
 			return ErrorDataType(message: "Duplicate column expression '\(name)'")
@@ -96,10 +98,16 @@ public class TypeInspector: ExpressionVisitor {
 			// TODO: Add table name to the error
 			return ErrorDataType(message: "Unknown column \(name)")
 		}
+		*/
+	    return ErrorDataType(message: "<<VISIT COLUMN REF NOT IMPLEMENTED>>")
 	}
 
 	public func visit(parameter: String) -> VisitorResult {
 	    return ErrorDataType(message: "Type compilation of parameters is not implemented")
+	}
+
+	public func visit(error: ExpressionError) -> VisitorResult {
+	    return ErrorDataType(message: "Expression error: \(error.description)")
 	}
 
 }

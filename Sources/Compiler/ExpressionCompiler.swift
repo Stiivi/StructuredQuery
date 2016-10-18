@@ -1,3 +1,4 @@
+import Basic
 import Schema
 import Expression
 import Foundation
@@ -5,7 +6,7 @@ import Foundation
 // TODO: Use ResultString
 //
 // We need to use something like:
-// enum ResultString { case value, error(String) }
+
 
 /// Complier of expressions into strings within context of a SQL dialect.
 public class ExpressionCompiler: ExpressionVisitor {
@@ -78,14 +79,19 @@ public class ExpressionCompiler: ExpressionVisitor {
 		return "\(table.name).\(column)"
 	}
 
-	public func visit(column: String, inRelation relation: Relation) -> VisitorResult {
+	public func visit(columnReference: ColumnReference) -> VisitorResult {
 		// TODO: identifier formatter
 		// TODO: What about multiple unnamed tables?
-		return "\(relation.name).\(column)"
+		return "<<COLUMN REFERENCE NOT IMPLEMENTED>>"
 	}
 
 	public func visit(parameter: String) -> VisitorResult {
-		return "BINDUNSUPPORTED"
+		// FIXME: emit error
+		return "<<PARAMETERS NOT IMPLEMENTED>>"
+	}
+	public func visit(error: ExpressionError) -> VisitorResult {
+		// FIXME: emit error
+		return "<<EXPRESSION ERROR: \(error.description)>>"
 	}
 }
 
