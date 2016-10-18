@@ -3,9 +3,9 @@ import Schema
 /// Assignment of a name to a selectable.
 public final class Alias: Equatable {
 	/// Selectable that is aliased with a name
-	let aliased: Selectable
+	public let aliased: Selectable
 	/// Name assigned to the selectable
-	let name: String
+	public let name: String
 
 	/// Creates an alias `name` for `selectable`.
 	public init(_ selectable: Selectable, as name: String) {

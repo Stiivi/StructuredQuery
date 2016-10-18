@@ -43,6 +43,27 @@ public func ==(lhs: TableExpression, rhs: TableExpression) -> Bool {
 }
 
 
+public protocol TableExpressionVisitor {
+	associatedtype TableExpressionResult
+	func visit(tableExpression: TableExpression) -> TableExpressionResult
+	func visit(table: Table) -> TableExpressionResult
+	func visit(alias: Alias) -> TableExpressionResult
+	func visit(select: Select) -> TableExpressionResult
+	func visit(tableExpressionError: TableExpressionError) -> TableExpressionResult
+}
+
+extension TableExpressionVisitor {
+	public func visit(tableExpression: TableExpression) -> TableExpressionResult {
+		switch tableExpression {
+		case let .table(t): return visit(table: t)
+		case let .alias(t): return visit(alias: t)
+		case let .select(t): return visit(select: t)
+		case let .error(error): return visit(tableExpressionError: error)
+		}
+	}
+}
+
+
 public protocol TableExpressionConvertible {
 	var toTableExpression: TableExpression { get }
 }

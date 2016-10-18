@@ -5,7 +5,7 @@ import XCTest
 
 class ExpressionCompilerTestCase: XCTestCase {
 	func compile(_ expression: Expression) -> String {
-		let compiler = ExpressionCompiler()
+		let compiler = Compiler()
 		return compiler.visit(expression: expression)
 	}
 
@@ -46,3 +46,27 @@ class ExpressionCompilerTestCase: XCTestCase {
 		XCTAssertEqual(compile(!b), "NOT true")
 	}
 }
+
+class TableExpressionCompilerTestCase: XCTestCase {
+	func compile(_ selectable: Selectable) -> String {
+		let compiler = Compiler()
+		return compiler.visit(tableExpression: selectable.toTableExpression)
+	}
+
+	func testVisitSimple() {
+		let stmt = Select([1])
+		XCTAssertEqual(compile(stmt), "SELECT 1")
+	}
+
+	func testVisitExpression() {
+		let expr: Expression = 10
+		let stmt = Select([expr + 20 ])
+		XCTAssertEqual(compile(stmt), "SELECT 10 + 20")
+	}
+	func testVisitExpressionWithAlias() {
+		let expr: Expression = 10
+		let stmt = Select([expr.label(as:"x")])
+		XCTAssertEqual(compile(stmt), "SELECT 10 AS x")
+	}
+}
+

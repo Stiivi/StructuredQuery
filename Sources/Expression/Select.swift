@@ -7,8 +7,8 @@ public typealias ExpressionLookupList = LookupList<String, Expression>
 /// The main object representing a query.
 ///
 public final class Select: Equatable {
-	let selectList: ExpressionLookupList
-	let fromExpressions: [TableExpression]
+	public let selectList: ExpressionLookupList
+	public let fromExpressions: [TableExpression]
 
 	/// Creates a `Select` object which is the main object to contain full
 	/// query specification.

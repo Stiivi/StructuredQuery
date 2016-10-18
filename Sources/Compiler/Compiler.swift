@@ -9,9 +9,7 @@ import Foundation
 
 
 /// Complier of expressions into strings within context of a SQL dialect.
-public class ExpressionCompiler: ExpressionVisitor {
-	public typealias VisitorResult = String
-
+public class Compiler {
 	let dialect: Dialect
 
 	/// Creates an expression compiler for `dialect`. If `dialect` is not
@@ -19,6 +17,10 @@ public class ExpressionCompiler: ExpressionVisitor {
 	init(dialect: Dialect?=nil){
 		self.dialect = dialect ?? DefaultDialect()
 	}
+}
+
+extension Compiler: ExpressionVisitor {
+	public typealias VisitorResult = String
 
 	public func visitNull() -> VisitorResult {
 		return "NULL"
@@ -85,6 +87,11 @@ public class ExpressionCompiler: ExpressionVisitor {
 		return "<<COLUMN REFERENCE NOT IMPLEMENTED>>"
 	}
 
+	public func visit(alias: String, forExpression: Expression) -> VisitorResult {
+		let result = visit(expression: forExpression)
+		return "\(result ) AS \(alias)"
+	}
+
 	public func visit(parameter: String) -> VisitorResult {
 		// FIXME: emit error
 		return "<<PARAMETERS NOT IMPLEMENTED>>"
@@ -95,3 +102,38 @@ public class ExpressionCompiler: ExpressionVisitor {
 	}
 }
 
+extension Compiler: TableExpressionVisitor {
+	public typealias TableExpressionResult = String
+
+	public func visit(table: Table) -> TableExpressionResult {
+		// TODO: User formatter and schema
+		return table.name
+	}
+
+	public func visit(alias: Alias) -> TableExpressionResult {
+		let aliased = visit(tableExpression: alias.aliased.toTableExpression)
+
+		return "\(aliased) AS \(alias.name)"
+	}
+
+	public func visit(select: Select) -> TableExpressionResult {
+		var out: TableExpressionResult
+		let selectList = select.selectList.map { visit(expression: $0) }
+		let selectListResult = selectList.joined(separator: ", ")
+
+		out = "SELECT \(selectListResult)"
+
+		if !select.fromExpressions.isEmpty {
+			let froms = select.fromExpressions.map { visit(tableExpression: $0) }
+			let fromsResult = froms.joined(separator: ", ")
+			out += " FROM \(fromsResult)"
+		}
+
+		return out
+	}
+
+	public func visit(tableExpressionError error: TableExpressionError) -> TableExpressionResult {
+		return "<<ERROR: \(error.description)>>"
+	}
+
+}
