@@ -29,6 +29,11 @@ public protocol Selectable: TableExpressionConvertible {
 	/// expression is returned.
 	// TODO: We need an Error reference here
 	subscript(name: String) -> Expression { get }
+
+	/// List of errors associated with the receiver.
+	///
+	/// The errors are not dialect specific.
+	var errors: [Error] { get }
 }
 
 extension Selectable {
@@ -44,6 +49,10 @@ extension Selectable {
 		let ref = columns.first { $0.name == name }	
 
 		return ref.map { .columnReference($0) } ?? .error(.unknownColumn(name))
+	}
+
+	public var errors: [Error] {
+		return []
 	}
 }
 

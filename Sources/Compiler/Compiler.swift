@@ -19,6 +19,18 @@ public class Compiler {
 	}
 }
 
+
+extension String {
+	func wrap(left: String, right: String, when: Bool) -> String {
+		if when {
+			return left + self + right
+		}
+		else {
+			return self
+		}
+	}
+}
+
 extension Compiler: ExpressionVisitor {
 	public typealias VisitorResult = String
 
@@ -45,26 +57,40 @@ extension Compiler: ExpressionVisitor {
 	}
 
 	public func visit(binary op: String, _ left: Expression,_ right: Expression) -> VisitorResult {
-		let ls = visit(expression: left)
-		let rs = visit(expression: right)
 
-		if let opstr = DefaultBinaryOperators[op] {
-			return "\(ls) \(opstr) \(rs)"
-		}
-		else {
+		guard let opinfo = self.dialect.binaryOperator(op) else {
 			return "ERROR: Unknown binary operator '\(op)'"
 		}
 
+		let ls = visit(expression: left)
+		let rs = visit(expression: right)
+		let wrap: Bool
+		
+		if case .binary(let otherop, _, _) = left {
+			guard let otherinfo = self.dialect.binaryOperator(otherop) else {
+				return "ERROR: Unknown binary operator '\(otherop)'"
+			}
+			wrap = opinfo.precedence > otherinfo.precedence
+		}
+		else {
+			wrap = false
+		}
+
+		var out: String
+
+		out = ls.wrap(left: "(", right: ")", when: wrap)
+		out += " " + opinfo.string + " " + rs
+
+		return out
 	}
 
 	public func visit(unary op: String, _ arg: Expression) -> VisitorResult {
-		let vs = visit(expression: arg)
-		if let opstr = DefaultUnaryOperators[op] {
-			return "\(opstr) \(vs)"
-		}
-		else {
+		guard let opinfo = self.dialect.unaryOperator(op) else {
 			return "ERROR: Unknown unary operator '\(op)'"
 		}
+		let vs = visit(expression: arg)
+
+		return "\(opinfo.string) \(vs)"
 	}
 
 	public func visit(function: String, _ args: [Expression]) -> VisitorResult {

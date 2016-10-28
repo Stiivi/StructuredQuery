@@ -3,22 +3,18 @@ import Expression
 
 /// Protocol that specifies a SQL dialect properties.
 protocol Dialect {
-	func signatures(forBinary:String) -> [FunctionSignature]
-	func signatures(forUnary:String) -> [FunctionSignature]
-	func signatures(forFunction:String) -> [FunctionSignature]
+	func binaryOperator(_ name:String) -> Operator?
+	func unaryOperator(_ name:String) -> Operator?
 }
 
 
 /// Default SQL dialect that other dialects are recommended to inherit from.
 class DefaultDialect: Dialect {
-	func signatures(forBinary name:String) -> [FunctionSignature] {
-		return BasicBinarySignatures[name] ?? []
+	func binaryOperator(_ name:String) -> Operator? {
+		return BasicBinaryOperators[name] ?? nil
 	}
-	func signatures(forUnary name:String) -> [FunctionSignature] {
-		return BasicUnarySignatures[name] ?? []
-	}
-	func signatures(forFunction name:String) -> [FunctionSignature] {
-		return []
+	func unaryOperator(_ name:String) -> Operator? {
+		return BasicUnaryOperators[name] ?? nil
 	}
 }
 

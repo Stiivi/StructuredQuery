@@ -4,6 +4,7 @@ import XCTest
 @testable import Compiler
 
 class ExpressionCompilerTestCase: XCTestCase {
+
 	func compile(_ expression: Expression) -> String {
 		let compiler = Compiler()
 		return compiler.visit(expression: expression)
@@ -45,28 +46,25 @@ class ExpressionCompilerTestCase: XCTestCase {
 		XCTAssertEqual(compile(-e), "- 1")
 		XCTAssertEqual(compile(!b), "NOT true")
 	}
-}
 
-class TableExpressionCompilerTestCase: XCTestCase {
-	func compile(_ selectable: Selectable) -> String {
-		let compiler = Compiler()
-		return compiler.visit(tableExpression: selectable.toTableExpression)
-	}
+	func testPriority() {
+		let a: Expression = 10	
+		let b: Expression = 20	
+		let c: Expression = 30
 
-	func testVisitSimple() {
-		let stmt = Select([1])
-		XCTAssertEqual(compile(stmt), "SELECT 1")
-	}
+		var e: Expression
 
-	func testVisitExpression() {
-		let expr: Expression = 10
-		let stmt = Select([expr + 20 ])
-		XCTAssertEqual(compile(stmt), "SELECT 10 + 20")
-	}
-	func testVisitExpressionWithAlias() {
-		let expr: Expression = 10
-		let stmt = Select([expr.label(as:"x")])
-		XCTAssertEqual(compile(stmt), "SELECT 10 AS x")
+		e = a * b + c
+		XCTAssertEqual(compile(e), "10 * 20 + 30")
+
+		e = a + b * c
+		XCTAssertEqual(compile(e), "10 + 20 * 30")
+
+		e = (a + b) * c
+		XCTAssertEqual(compile(e), "(10 + 20) * 30")
+
+		e = a * a + b * b
+		XCTAssertEqual(compile(e), "10 * 10 + 20 * 20")
 	}
 }
 
