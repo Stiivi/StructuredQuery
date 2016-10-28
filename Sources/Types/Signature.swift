@@ -33,13 +33,13 @@ infix operator |^|: AdditionPrecedence
 
 public func |^|(lhs: DataType, rhs: DataType) -> FunctionSignature {
 	return FunctionSignature(
-   		arguments: [lhs],
+		arguments: [lhs],
 		returnType: rhs
 	)
 }
 public func |^|(lhs: (DataType, DataType), rhs: DataType) -> FunctionSignature {
 	return FunctionSignature(
-   		arguments: [lhs.0, lhs.1],
+		arguments: [lhs.0, lhs.1],
 		returnType: rhs
 	)
 }
