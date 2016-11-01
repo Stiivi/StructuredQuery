@@ -5,66 +5,71 @@ import XCTest
 
 class ExpressionCompilerTestCase: XCTestCase {
 
-	func compile(_ expression: Expression) -> String {
-		let compiler = Compiler()
-		return compiler.visit(expression: expression)
-	}
+    func compile(_ expression: Expression) -> String {
+        let compiler = Compiler()
+        let result = compiler.visit(expression: expression)
 
-	func testVisitNull() {
-		XCTAssertEqual(compile(nil), "NULL")
-	}
+        switch result {
+        case .value(let str): return str
+        case .failure(let errors): return "ERROR"
+        }
+    }
 
-	func testVisitInteger() {
-		XCTAssertEqual(compile(1024), "1024")
-	}
+    func testVisitNull() {
+        XCTAssertEqual(compile(nil), "NULL")
+    }
 
-	func testVisitBool() {
-		XCTAssertEqual(compile(true), "true")
-		XCTAssertEqual(compile(false), "false")
-	}
+    func testVisitInteger() {
+        XCTAssertEqual(compile(1024), "1024")
+    }
 
-	// TODO: test for special characters, newlines
-	func testVisitString() {
-		XCTAssertEqual(compile("text"), "'text'")
-		XCTAssertEqual(compile("qu'ote"), "'qu''ote'")
-	}
+    func testVisitBool() {
+        XCTAssertEqual(compile(true), "true")
+        XCTAssertEqual(compile(false), "false")
+    }
 
-	func testVisitBinary() {
-		let e: Expression = 1
-		let b: Expression = true
+    // TODO: test for special characters, newlines
+    func testVisitString() {
+        XCTAssertEqual(compile("text"), "'text'")
+        XCTAssertEqual(compile("qu'ote"), "'qu''ote'")
+    }
 
-		XCTAssertEqual(compile(e + 2), "1 + 2")
-		XCTAssertEqual(compile(e == 2), "1 = 2")
-		XCTAssertEqual(compile(b && false), "true AND false")
-		XCTAssertEqual(compile(b || false), "true OR false")
-	}
+    func testVisitBinary() {
+        let e: Expression = 1
+        let b: Expression = true
 
-	func testVisitUnary() {
-		let e: Expression = 1
-		let b: Expression = true
+        XCTAssertEqual(compile(e + 2), "1 + 2")
+        XCTAssertEqual(compile(e == 2), "1 = 2")
+        XCTAssertEqual(compile(b && false), "true AND false")
+        XCTAssertEqual(compile(b || false), "true OR false")
+    }
 
-		XCTAssertEqual(compile(-e), "- 1")
-		XCTAssertEqual(compile(!b), "NOT true")
-	}
+    func testVisitUnary() {
+        let e: Expression = 1
+        let b: Expression = true
 
-	func testPriority() {
-		let a: Expression = 10	
-		let b: Expression = 20	
-		let c: Expression = 30
+        XCTAssertEqual(compile(-e), "- 1")
+        XCTAssertEqual(compile(!b), "NOT true")
+    }
 
-		var e: Expression
+    func testPriority() {
+        let a: Expression = 10  
+        let b: Expression = 20  
+        let c: Expression = 30
 
-		e = a * b + c
-		XCTAssertEqual(compile(e), "10 * 20 + 30")
+        var e: Expression
 
-		e = a + b * c
-		XCTAssertEqual(compile(e), "10 + 20 * 30")
+        e = a * b + c
+        XCTAssertEqual(compile(e), "10 * 20 + 30")
 
-		e = (a + b) * c
-		XCTAssertEqual(compile(e), "(10 + 20) * 30")
+        e = a + b * c
+        XCTAssertEqual(compile(e), "10 + 20 * 30")
 
-		e = a * a + b * b
-		XCTAssertEqual(compile(e), "10 * 10 + 20 * 20")
-	}
+        e = (a + b) * c
+        XCTAssertEqual(compile(e), "(10 + 20) * 30")
+
+        e = a * a + b * b
+        XCTAssertEqual(compile(e), "10 * 10 + 20 * 20")
+    }
 }
 
