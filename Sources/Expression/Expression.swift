@@ -39,8 +39,10 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
     /// - See: Expression.alias(as:)
     case alias(Expression, String)
 
-    // Column, Correlation name
-    case tableColumn(String, Table)
+    /// Reference to a table or derived relation column.
+    ///
+    /// - See: ColumnReference
+    /// - See: Relation
     case columnReference(ColumnReference)
 
     /// Represents an errorneous expression – an expression that was not
@@ -71,7 +73,6 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
     public var alias: String? {
         switch self {
         case let .alias(_, name): return name
-        case let .tableColumn(name, _): return name
         case let .columnReference(ref): return ref.name
         default: return nil
         }
@@ -112,8 +113,6 @@ public func ==(left: Expression, right: Expression) -> Bool {
     case let(.function(lname, largs), .function(rname, rargs))
                 where lname == rname && largs == rargs: return true
     case let(.parameter(lval), .parameter(rval)) where lval == rval: return true
-    case let(.tableColumn(lname, ltable), .tableColumn(rname, rtable))
-                where lname == rname && ltable == rtable: return true
     case let(.columnReference(lval), .columnReference(rval)) where lval == rval: return true
     case let(.error(lval), .error(rval)) where lval == rval: return true
             

@@ -108,18 +108,11 @@ extension Compiler: ExpressionVisitor {
     }
 
     public func visit(columnReference reference: ColumnReference) -> VisitorResult {
-        // TODO: identifier formatter
+        // TODO: Include reference name
         // TODO: What about multiple unnamed tables?
-        var out: VisitorResult
-        if let relationName = reference.tableExpression.name {
-            out = .value("\(relationName).")
-        }
-        else {
-            out = ""
-        }
-        out += reference.name
-
-        return out
+        // TODO: Identifier formatter
+        // TODO: Handle error
+        return .value(reference.name)
     }
 
     public func visit(alias: String, forExpression: Expression) -> VisitorResult {
@@ -135,38 +128,53 @@ extension Compiler: ExpressionVisitor {
     }
 }
 
-extension Compiler: TableExpressionVisitor {
-    public typealias TableExpressionResult = ResultString<CompilerError>
+extension Compiler: RelationVisitor {
+    public typealias RelationResult = ResultString<CompilerError>
 
-    public func visit(table: Table) -> TableExpressionResult {
+    public func visit(table: Table) -> RelationResult {
         // TODO: User formatter and schema
         return .value(table.name)
     }
 
-    public func visit(alias: Alias) -> TableExpressionResult {
-        let aliased = visit(tableExpression: alias.aliased.toTableExpression)
+    public func visit(alias: Alias) -> RelationResult {
+        let aliased = visit(relation: alias.relation)
 
         return aliased + " AS \(alias.name)"
     }
 
-    public func visit(select: Select) -> TableExpressionResult {
-        var out: TableExpressionResult
-        let selectList = select.selectList.map { visit(expression: $0) }
+    public func visit(projection: Projection) -> RelationResult {
+        var out: RelationResult
+        let selectList = projection.selectList.map { visit(expression: $0) }
         let selectListResult = concatenate(selectList, separator: ", ")
 
         out = "SELECT " + selectListResult
 
-        if !select.fromExpressions.isEmpty {
-            let froms = select.fromExpressions.map { visit(tableExpression: $0) }
-            let fromsResult = concatenate(froms, separator: ", ")
-            out += " FROM " + fromsResult
+        if let relation = projection.relation {
+            out += " FROM " + visit(relation: relation)
         }
 
         return out
     }
 
-    public func visit(tableExpressionError error: TableExpressionError) -> TableExpressionResult {
-        return .failure([.tableExpression(error)])
+    public func visit(join: Join) -> RelationResult {
+        // TODO: Implement this
+        let joinString: RelationResult
+        switch join.type {
+        case .inner: joinString = "JOIN"
+        case .leftOuter: joinString = "LEFT OUTER JOIN"
+        case .rightOuter: joinString = "RIGHT OUTER JOIN"
+        case .fullOuter: joinString = "FULL OUTER JOIN"
+        }
+
+        let left = visit(relation: join.left)
+        let right = visit(relation: join.right)
+
+        return left + joinString.pad() + right
+    }
+
+    public func visit(unknownRelationType relation: Relation) -> RelationResult {
+        let typeName = String(describing: type(of:relation))
+        return .failure([.internalError("Unknown relation type: \(typeName)")])
     }
 
 }

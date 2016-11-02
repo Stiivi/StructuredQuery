@@ -1,5 +1,10 @@
 import Basic
 
+/// Type that wraps a string or a list of failures. `ResultString` is used for
+/// constructing a result that is composed by concatenation of multiple
+/// strings. Multiple errors might occur during the concatenation and they
+/// gathered in the failure case of the object.
+/// 
 public enum ResultString<ErrorType> where ErrorType: Error {
     case value(String)
     case failure([ErrorType])
@@ -8,6 +13,7 @@ public enum ResultString<ErrorType> where ErrorType: Error {
         self = .failure([error])
     }
 
+    /// Is `true` if the receiver is a failure.
     public var isFailure: Bool {
         switch self {
         case .value: return false   
@@ -15,6 +21,7 @@ public enum ResultString<ErrorType> where ErrorType: Error {
         }
     }
 
+    /// Get list of errors if the receiver is a failure, otherwise `nil`.
     public var errors: [ErrorType] {
         switch self {
         case .value: return []  
@@ -22,6 +29,8 @@ public enum ResultString<ErrorType> where ErrorType: Error {
         }
     }
 
+    /// Get strnig value of the receiver or `nil` if the receivers is a
+    /// failure.
     public var string: String? {
         switch self {
         case let .value(str): return str
@@ -29,15 +38,31 @@ public enum ResultString<ErrorType> where ErrorType: Error {
         }
     }
 
+    
+    /// Prefix the value with `left` and suffix with `right` when condition is
+    /// `true`.
     public func wrap(left: String, right: String, when: Bool=false) -> ResultString {
         switch self {
         case let .value(str) where when == true: return .value(left + str + right)
         default: return self
         }
     }
+
+    /// Pad the value with spaces on both sides.
+    public func pad() -> ResultString {
+        switch self {
+        case let .value(str): return .value(" \(str) ")
+        default: return self
+        }
+    }
 }
 
 extension ResultString: Concatenable {
+    /// Concatenate two results and produce another result string. If both
+    /// objects are string values, the result is a value of concatenated
+    /// strings. If one of the results is a failure, then result is concatenation
+    /// of the failures.
+    ///
     public func concatenate(_ other: ResultString<ErrorType>)
         -> ResultString<ErrorType>
     {
@@ -87,7 +112,7 @@ public func +=<E: Error>(lhs: inout ResultString<E>, rhs: ResultString<E>) {
 }
 
 // Comparison
-
+// TODO: Add error comparison
 public func ==<E: Error>(lhs: ResultString<E>, string: String) -> Bool {
     switch lhs {
     case .value(let value) where value == string: return true

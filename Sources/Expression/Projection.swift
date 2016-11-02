@@ -6,16 +6,16 @@ public typealias ExpressionLookupList = LookupList<String, Expression>
 // Add: Executable
 /// The main object representing a query.
 ///
-public final class Select: Equatable {
+public final class Projection: Equatable {
+    public let relation: Relation?
     public let selectList: ExpressionLookupList
-    public let fromExpressions: [TableExpression]
 
     /// Creates a `Select` object which is the main object to contain full
     /// query specification.
     ///
     /// - Precondition: The `selectList` must not be empty.
     ///
-    public init(_ selectList: [ExpressionConvertible]=[], from: Selectable?=nil) {
+    public init(_ selectList: [ExpressionConvertible]=[], from: Relation?=nil) {
         precondition(selectList.count != 0)
 
         // If we have the select list, then we use it...
@@ -24,25 +24,15 @@ public final class Select: Equatable {
             $0.alias
         }
 
-        if let from = from {
-            fromExpressions = [from.toTableExpression]
-        }
-        else {
-            fromExpressions = []
-        }
+        relation = from
     }
 }
 
-extension Select: Selectable {
-    public var toTableExpression: TableExpression {
-        return .select(self)
-    }
-
+extension Projection: Relation {
     /// List of references to colmns of this `Select` statement.
     public var columns: [ColumnReference] {
-        let tableExpression = self.toTableExpression
         let references = self.selectList.keys.map {
-            ColumnReference(name: $0, tableExpression: tableExpression)
+            ColumnReference(name: $0, relation: self)
         }
 
         return references
@@ -51,8 +41,13 @@ extension Select: Selectable {
 }
 
 
-public func ==(lhs: Select, rhs: Select) -> Bool {
+public func ==(lhs: Projection, rhs: Projection) -> Bool {
     return lhs.selectList == rhs.selectList
-            && lhs.fromExpressions == rhs.fromExpressions
+        && ((lhs.relation == nil && rhs.relation == nil)
+            || ( lhs.relation.map {
+                lrel in rhs.relation.map {
+                    rrel in lrel == rrel
+                } ?? false
+            } ?? false))
 }
 

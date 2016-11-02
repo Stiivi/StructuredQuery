@@ -36,14 +36,14 @@ public enum CompilerError: Error, CustomStringConvertible, Equatable {
     case unknownBinaryOperator(String)
     case unknownUnaryOperator(String)
     case expression(ExpressionError)
-    case tableExpression(TableExpressionError)
+    case internalError(String)
 
     public var description: String {
         switch self {
         case let .unknownBinaryOperator(op): return "Unknown binary operator '\(op)'"
         case let .unknownUnaryOperator(op): return "Unknown unary operator '\(op)'"
         case let .expression(error): return "Expression error: \(error.description)"
-        case let .tableExpression(error): return "Table expression error: \(error.description)"
+        case let .internalError(error): return "Internal error: \(error)"
         }
     }
 }
