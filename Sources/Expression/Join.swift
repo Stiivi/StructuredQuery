@@ -21,6 +21,9 @@ public class Join {
 }
 
 extension Join: Relation {
+    public var qualifiedName: QualifiedRelationName? {
+        return nil
+    }
     /// List of references to colmns of this `Select` statement.
     public var columns: [ColumnReference] {
         return left.columns + right.columns

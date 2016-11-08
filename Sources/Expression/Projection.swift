@@ -29,6 +29,10 @@ public final class Projection: Equatable {
 }
 
 extension Projection: Relation {
+    public var qualifiedName: QualifiedRelationName? {
+        return nil
+    }
+
     /// List of references to colmns of this `Select` statement.
     public var columns: [ColumnReference] {
         let references = self.selectList.keys.map {

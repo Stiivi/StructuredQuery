@@ -6,7 +6,7 @@ import XCTest
 
 // TODO: Base Tables!!!
 
-class SelectTestCase: XCTestCase {
+class ProjectionTestCase: XCTestCase {
     let events = Table("events", 
         Column("id", INTEGER),
         Column("name", TEXT),
@@ -19,43 +19,48 @@ class SelectTestCase: XCTestCase {
         Column("country", TEXT)
     )
 
-    func testSelectFromNothing(){
-        var select: Select = Select([1])
+    func testProjectionFromNothing(){
+        var rel: Projection = Projection([1])
 
-        XCTAssertEqual(select.selectList.count, 1)
-        XCTAssertEqual(select.fromExpressions, [])
+        XCTAssertEqual(rel.selectList.count, 1)
+        XCTAssertTrue(rel.relation == nil)
         // XCTAssertEqual(select.baseTables, [])
 
         let expr = Expression.integer(1).label(as: "scalar")
 
-        select = Select([expr])
+        rel = Projection([expr])
 
-        XCTAssertEqual(select.selectList.count, 1)
-        XCTAssertEqual(select.selectList.keys, ["scalar"])
-        XCTAssertEqual(select.fromExpressions, [])
+        XCTAssertEqual(rel.selectList.count, 1)
+        XCTAssertEqual(rel.selectList.keys, ["scalar"])
+        XCTAssertTrue(rel.relation == nil)
         // XCTAssertEqual(select.baseTables, [])
     }
     // Table
     // -----
     func testSelectAllFromOneTable() {
-        let select: Select
-        let select2: Select
+        let select: Projection
+        let select2: Projection
 
-        select = Select(events.columns, from: events) 
+        select = Projection(events.columns, from: events) 
         XCTAssertEqual(select.selectList.keys, ["id", "name", "value"])
-        XCTAssertEqual(select.fromExpressions, [events.toTableExpression])
+        if let relation = select.relation {
+            XCTAssertTrue(relation == events)
+        }
+        else {
+            XCTFail("Relation is nil")
+        }
         // XCTAssertEqual(select.baseTables, [events])
 
-        select2 = events.select() 
+        select2 = events.project() 
         XCTAssertEqual(select2.selectList.keys, ["id", "name", "value"])
         XCTAssertEqual(select, select2)
     }
     func testSelectSomethingFromTable() {
-        let select: Select
+        let select: Projection
 
         let list: [ExpressionConvertible] = [events["id"], events["name"]]
 
-        select = Select(list, from: events)
+        select = Projection(list, from: events)
         XCTAssertEqual(select.selectList.keys, ["id", "name"])
         // XCTAssertEqual(select.baseTables, [events])
     }
@@ -63,10 +68,10 @@ class SelectTestCase: XCTestCase {
     // Alias
     // -----
     func testSelectFromAlias() {
-        let select: Selectable
-        let alias: Selectable
+        let select: Relation
+        let alias: Relation
 
-        select = events.select()
+        select = events.project()
         alias = select.alias(as:"renamed")
 
         // XCTAssertEqual(select.baseTable, alias.baseTables)

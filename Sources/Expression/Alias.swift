@@ -19,6 +19,9 @@ public func ==(lhs: Alias, rhs: Alias) -> Bool {
 }
 
 extension Alias: Relation {
+    public var qualifiedName: QualifiedRelationName? {
+        return QualifiedRelationName(name: name)
+    }
     /// List of references to colmns of this `Select` statement.
     public var columns: [ColumnReference] {
         let references = self.relation.columns.map {

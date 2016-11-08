@@ -1,10 +1,34 @@
 import Basic
 import Schema
 
+public struct QualifiedRelationName {
+    let name: String
+    let schema: String?
+    public init(name: String, schema: String? = nil) {
+        self.name = name
+        self.schema = schema
+    }
+}
+
+extension QualifiedRelationName: CustomStringConvertible {
+    public var description: String {
+        return schema.map { schema in "\(schema).\(name)" } ?? name
+    }
+}
+
+extension QualifiedRelationName: Hashable {
+    public var hashValue: Int {
+        return name.hashValue ^ (schema.map { $0.hashValue } ?? 0)
+    }
+    public static func ==(lhs: QualifiedRelationName, rhs: QualifiedRelationName) -> Bool {
+        return lhs.name == rhs.name && lhs.schema == rhs.schema
+    }
+}
+
 /// Represents a relation
 public protocol Relation {
     /// Name of the relation
-    var name: String?
+    var qualifiedName: QualifiedRelationName? { get }
     /// List of references to named columns of the relation.
     ///
     var columns: [ColumnReference] { get }
@@ -15,7 +39,7 @@ public protocol Relation {
     ///                         objects. If `nil` is provided (usually
     ///                         default), then all columns from the selectable
     ///                         are included.
-    //func project(_ selectList: [ExpressionConvertible]?) -> Projection
+    func project(_ selectList: [ExpressionConvertible]?) -> Projection
 
     /// Creates an alias for the receiver.
     func alias(as name: String) -> Alias
@@ -36,9 +60,27 @@ public protocol Relation {
     // var errors: [Error] { get }
 }
 
+public func ==(lhs: Relation, rhs: Relation) -> Bool {
+// public func ==<T: Relation, U:Relation>(lhs: T, rhs: U) -> Bool {
+    switch (lhs, rhs) {
+    case let (lrel as Alias, rrel as Alias) where lrel == rrel: return true
+    case let (lrel as Join, rrel as Join) where lrel == rrel: return true
+    case let (lrel as Projection, rrel as Projection) where lrel == rrel: return true
+    default: return false
+    }
+}
+
 extension Relation {
     public func alias(as name: String) -> Alias {
         return Alias(self, as:name)
+    }
+    public func project(_ selectList: [ExpressionConvertible]?=nil) -> Projection {
+        if let selectList = selectList {
+            return Projection(selectList, from: self)   
+        }
+        else {
+            return Projection(self.columns, from: self)   
+        }
     }
 
     public subscript(name: String) -> ColumnReference {
@@ -46,12 +88,6 @@ extension Relation {
         return ref!
     }
 }
-
-
-public func ==(lhs: Relation, rhs: Relation) -> Bool {
-    return type(of: lhs) == type(of: rhs) && lhs == rhs
-}
-
 
 /// Reference to a column of a table expression.
 ///
@@ -78,6 +114,10 @@ extension ColumnReference: ExpressionConvertible {
 
 
 extension Table: Relation {
+    public var qualifiedName: QualifiedRelationName? {
+        return QualifiedRelationName(name: name, schema: schema)
+    }
+
     /// List of references to colmns of this `Select` statement.
     public var columns: [ColumnReference] {
         let references = self.columnDefinitions.map {
