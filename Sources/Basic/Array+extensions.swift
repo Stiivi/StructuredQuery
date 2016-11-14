@@ -18,6 +18,39 @@ public func concatenate<S: Collection, T: Concatenable>(_ sequence: S, separator
 
     return finalResult
 }
+
+extension Collection where Iterator.Element: Hashable {
+    var uniqueFlags: [Iterator.Element:Bool] {
+        var unique: [Iterator.Element:Bool]
+        unique = self.reduce([:]) {
+            accumulator, item in
+            var result = accumulator
+            if result.index(forKey: item) == nil {
+                // Seen for the first time
+                result.updateValue(true, forKey: item)
+            }
+            else {
+                // Not unique, already seen
+                result[item] = false
+            }
+            return result
+        }
+
+        return unique
+    }
+
+    /// Returns elements that are duplicated in the array
+    public var duplicates: Set<Iterator.Element> {
+        let dupes: Set<Iterator.Element> = Set(uniqueFlags.flatMap {
+                key, isUnique in
+                if isUnique { return nil }
+                else { return key }
+            })
+        return dupes
+    }
+
+}
+
 /*
 extension Collection where Iterator.Element == Concatenable {
     public func concatenated(separator: Iterator.Element) -> Iterator.Element

@@ -107,12 +107,25 @@ extension Compiler: ExpressionVisitor {
         return .value("\(table.name).\(column)")
     }
 
-    public func visit(columnReference reference: ColumnReference) -> VisitorResult {
-        // TODO: Include reference name
-        // TODO: What about multiple unnamed tables?
+    public func visit(attribute reference: AttributeReference) -> VisitorResult {
         // TODO: Identifier formatter
         // TODO: Handle error
-        return .value(reference.name)
+        let prefix: String
+
+        if let error = reference.error {
+            return .failure([.expression(error)])
+        }
+
+        if let qualifiedName = reference.relation.qualifiedName {
+            prefix = qualifiedName.description + "."
+        }
+        else {
+            prefix = ""
+        }
+
+        // Name is guaranteed to exist, if there is no error
+        return .value(prefix + reference.name!)
+
     }
 
     public func visit(alias: String, forExpression: Expression) -> VisitorResult {

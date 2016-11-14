@@ -22,12 +22,19 @@ extension Alias: Relation {
     public var qualifiedName: QualifiedRelationName? {
         return QualifiedRelationName(name: name)
     }
-    /// List of references to colmns of this `Select` statement.
-    public var columns: [ColumnReference] {
-        let references = self.relation.columns.map {
-            ColumnReference(name: $0.name, relation: self)
-        }
 
-        return references
+    public var attributes: [AttributeReference] {
+        let attributes = relation.attributes.map {
+            attr in
+            return AttributeReference(index: attr.index,
+                                      name: attr.name,
+                                      relation: self)
+        }
+        return attributes
+    }
+
+    /// List of references to colmns of this `Select` statement.
+    public var attributeExpressions: [Expression] {
+        return relation.attributeExpressions
     }
 }

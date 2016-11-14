@@ -1,14 +1,12 @@
 import Basic
 import Schema
 
-public typealias ExpressionLookupList = LookupList<String, Expression>
-
 // Add: Executable
 /// The main object representing a query.
 ///
 public final class Projection: Equatable {
     public let relation: Relation?
-    public let selectList: ExpressionLookupList
+    public let selectList: [Expression]
 
     /// Creates a `Select` object which is the main object to contain full
     /// query specification.
@@ -20,9 +18,7 @@ public final class Projection: Equatable {
 
         // If we have the select list, then we use it...
         let expressions = selectList.map { $0.toExpression }
-        self.selectList = ExpressionLookupList(expressions) {
-            $0.alias
-        }
+        self.selectList = Array(expressions)
 
         relation = from
     }
@@ -33,13 +29,57 @@ extension Projection: Relation {
         return nil
     }
 
-    /// List of references to colmns of this `Select` statement.
-    public var columns: [ColumnReference] {
-        let references = self.selectList.keys.map {
-            ColumnReference(name: $0, relation: self)
+    /// List of references to attributes of this projection. If the underlying
+    /// expression has an alias, then the reference will have equal name to the
+    /// alias. If there are multiple attributes with the same alias, then all
+    /// of the references with the same name will be marked as ambiguous. If
+    /// the underlying expression does not have an alias, then the reference
+    /// will contain only index of the expression within the list of attribute
+    /// expressions.
+    ///
+    /// - Returns: list of attribute references
+    ///
+    public var attributes: [AttributeReference] {
+        let duplicates = selectList.flatMap {
+            $0.alias
+        }.duplicates
+
+
+        let refs: [AttributeReference] = self.selectList.enumerated().map {
+            i, expr in
+            if let name = expr.alias {
+                let index: AttributeIndex
+                if duplicates.contains(name) {
+                    index = .ambiguous 
+                } 
+                else {
+                    index = .concrete(i)
+                }
+                return AttributeReference(index: index,
+                                          name: name,
+                                          relation: self)
+            }
+            else {
+                return AttributeReference(index: .concrete(i),
+                                          name: nil,
+                                          relation: self)
+            }
         }
 
-        return references
+        return refs
+    }
+
+    public var attributeExpressions: [Expression] {
+        return selectList
+    }
+
+    public var debugName: String {
+        if let relation = relation {
+            return "[\(relation.debugName)]"
+        }
+        else {
+            return "[(empty relation)]"
+        }
     }
 
 }

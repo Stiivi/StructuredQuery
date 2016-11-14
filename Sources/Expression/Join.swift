@@ -25,8 +25,20 @@ extension Join: Relation {
         return nil
     }
     /// List of references to colmns of this `Select` statement.
-    public var columns: [ColumnReference] {
-        return left.columns + right.columns
+    public var attributes: [AttributeReference] {
+        let allAttributes = left.attributes + right.attributes
+        let attributes = allAttributes.map {
+            attr in
+            return AttributeReference(index: attr.index,
+                                      name: attr.name,
+                                      relation: self)
+        }
+        return attributes
+    }
+
+    /// FIXME: Is this really correct?
+    public var attributeExpressions: [Expression] {
+        return left.attributeExpressions + right.attributeExpressions
     }
 }
 

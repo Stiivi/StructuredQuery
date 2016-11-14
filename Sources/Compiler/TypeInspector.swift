@@ -81,23 +81,13 @@ public class TypeInspector: ExpressionVisitor {
         }
     }
 
-    public func visit(columnReference ref: ColumnReference) -> VisitorResult {
-        // 
-        /*
-        let expressions = ref.tableExpression.selectable.
-        if expressions.duplicateKeys.contains(name) {
-            // TODO: Add table name to the error
-            return ErrorDataType(message: "Duplicate column expression '\(name)'")
+    public func visit(attribute reference: AttributeReference) -> VisitorResult {
+        if let error = reference.error {
+            return ErrorDataType(message: error.description)
         }
-        else if let expression = expressions[name] {
-            return visit(expression: expression)
-        }
-        else {
-            // TODO: Add table name to the error
-            return ErrorDataType(message: "Unknown column \(name)")
-        }
-        */
-        return ErrorDataType(message: "<<VISIT COLUMN REF NOT IMPLEMENTED>>")
+        // Value is guaranteed to exist if there is no error
+        let expr = reference.relation.attributeExpressions[reference.index.value!]
+        return visit(expression: expr)
     }
 
     public func visit(parameter: String) -> VisitorResult {

@@ -16,7 +16,7 @@ public protocol ExpressionVisitor {
     func visit(function: String, _ args: [Expression]) -> VisitorResult
     func visit(parameter: String) -> VisitorResult
     func visit(column: String, inTable: Table) -> VisitorResult
-    func visit(columnReference: ColumnReference) -> VisitorResult
+    func visit(attribute: AttributeReference) -> VisitorResult
     func visit(error: ExpressionError) -> VisitorResult
 
     func visit(alias: String, forExpression: Expression) -> VisitorResult
@@ -47,8 +47,10 @@ extension ExpressionVisitor {
             out = self.visit(function: name, args)
         case let .parameter(name):
             out = self.visit(parameter: name)
-        case let .columnReference(ref):
-            out = self.visit(columnReference: ref)
+        case let .tableColumn(name, table):
+            out = self.visit(column: name, inTable: table)
+        case let .attributeReference(reference):
+            out = self.visit(attribute: reference)
         case let .error(error):
             out = self.visit(error:error)
         }

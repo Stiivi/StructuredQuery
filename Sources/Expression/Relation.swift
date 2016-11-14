@@ -25,13 +25,85 @@ extension QualifiedRelationName: Hashable {
     }
 }
 
+public enum AttributeIndex: Equatable {
+    case concrete(Int)
+    case ambiguous
+    case unknown
+
+    public var value: Int? {
+        switch self {
+        case .concrete(let index): return index
+        default: return nil
+        }
+    }
+
+    public static func ==(lhs: AttributeIndex, rhs: AttributeIndex) -> Bool {
+        switch (lhs, rhs) {
+        case let (.concrete(lval), .concrete(rval)) where lval == rval: return true
+        case (.ambiguous, .ambiguous): return true
+        case (.unknown, .unknown): return true
+        default: return false
+        }
+    }
+}
+
+public struct AttributeReference {
+    public let index: AttributeIndex
+    public let name: String?
+    public let relation: Relation
+
+    public init(index: AttributeIndex, name: String?, relation: Relation) {
+        self.index = index
+        self.name = name
+        self.relation = relation
+    }
+
+    public var error: ExpressionError? {
+        switch index {
+        case .concrete(let i):
+            if name != nil {
+                // We have both: index and name
+                return nil
+            }
+            else {
+                return .anonymousAttribute(i, relation.debugName)
+            }
+        case .ambiguous:
+                return .ambiguousAttribute(name ?? "(unnamed)", relation.debugName)
+        case .unknown:
+                return .unknownAttribute(name ?? "(unnamed)", relation.debugName)
+        }
+    }
+}
+
+extension AttributeReference: CustomStringConvertible {
+    public var description: String {
+        let key = name ?? "[\(index)]"
+        return "\(relation.debugName).\(key)"
+    }
+}
+
+extension AttributeReference: ExpressionConvertible {
+    public var toExpression: Expression {
+        return .attributeReference(self)
+    }
+}
+
+func ==(lhs: AttributeReference, rhs: AttributeReference) -> Bool {
+    return lhs.index == rhs.index
+            && lhs.name == rhs.name
+            && lhs.relation == rhs.relation
+}
+
 /// Represents a relation
 public protocol Relation {
     /// Name of the relation
     var qualifiedName: QualifiedRelationName? { get }
+
     /// List of references to named columns of the relation.
     ///
-    var columns: [ColumnReference] { get }
+    var attributes: [AttributeReference] { get }
+    var attributeExpressions: [Expression] { get }
     
     /// Creates a `Projection` object.
     ///
@@ -51,13 +123,20 @@ public protocol Relation {
     ///
     /// If the selection does not have a column with given name, then an error
     /// expression is returned.
-    // TODO: We need an Error reference here
-    subscript(name: String) -> ColumnReference { get }
+    subscript(name: String) -> AttributeReference { get }
 
     /// List of errors associated with the receiver.
     ///
     /// The errors are not dialect specific.
+    // var hasErrors: Bool { get }
+    /// Concrete relation instance errors combined with the common errors
     // var errors: [Error] { get }
+    /// Common relation errors
+    // var commonErrors: [Error] { get }
+    // var baseRelations: [Relation] { get }
+    // var allErrors: [(Relation, Error)] { get }
+    /// Name of the relation used for debugging purposes or error reporting
+    var debugName: String { get }
 }
 
 public func ==(lhs: Relation, rhs: Relation) -> Bool {
@@ -74,56 +153,46 @@ extension Relation {
     public func alias(as name: String) -> Alias {
         return Alias(self, as:name)
     }
+
     public func project(_ selectList: [ExpressionConvertible]?=nil) -> Projection {
         if let selectList = selectList {
             return Projection(selectList, from: self)   
         }
         else {
-            return Projection(self.columns, from: self)   
+            return Projection(self.attributes, from: self)   
         }
     }
 
-    public subscript(name: String) -> ColumnReference {
-        let ref = columns.first { $0.name == name } 
-        return ref!
+    public subscript(name: String) -> AttributeReference {
+        // TODO: Do we need to check for existence of `name` here?
+        let first = attributes.first { $0.name == name }
+        return first ?? 
+                AttributeReference(index: .unknown, name: name, relation: self)
+    }
+
+    public var debugName: String {
+        return self.qualifiedName.map { $0.description } ?? "(anonymous)"
     }
 }
-
-/// Reference to a column of a table expression.
-///
-public struct ColumnReference: Equatable {
-    /// Table expression that owns the column
-    public let relation: Relation
-    /// Name of the column within the relation thath this reference
-    /// refers to
-    public let name: String
-
-    public init(name: String, relation: Relation) {
-        self.name = name
-        self.relation = relation
-    }
-}
-
-public func ==(lhs: ColumnReference, rhs: ColumnReference) -> Bool {
-    return lhs.name == rhs.name && lhs.relation == rhs.relation
-}
-
-extension ColumnReference: ExpressionConvertible {
-    public var toExpression: Expression { return .columnReference(self) }
-}
-
 
 extension Table: Relation {
     public var qualifiedName: QualifiedRelationName? {
         return QualifiedRelationName(name: name, schema: schema)
     }
 
-    /// List of references to colmns of this `Select` statement.
-    public var columns: [ColumnReference] {
-        let references = self.columnDefinitions.map {
-            ColumnReference(name: $0.name, relation: self)
+    public var attributes: [AttributeReference] {
+        // We assume that table makes sure that the columns are not ambiguous
+        return self.columnDefinitions.enumerated().map {
+            i, col in
+            AttributeReference(index: .concrete(i),
+                               name: col.name,
+                               relation: self)
         }
+    }
 
-        return references
+    public var attributeExpressions: [Expression] {
+        return self.columnDefinitions.map {
+            .tableColumn($0.name, self)
+        }
     }
 }
