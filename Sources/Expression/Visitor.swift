@@ -67,8 +67,9 @@ public protocol RelationVisitor {
     func visit(relation: Relation) -> RelationResult
     func visit(table: Table) -> RelationResult
     func visit(alias: Alias) -> RelationResult
-    func visit(projection: Projection) -> RelationResult
     func visit(join: Join) -> RelationResult
+    func visit(projection: Projection) -> RelationResult
+    func visit(selection: Selection) -> RelationResult
     func visit(unknownRelationType: Relation) -> RelationResult
 }
 
@@ -78,8 +79,9 @@ extension RelationVisitor {
 		switch relation {
 		case let table as Table: return visit(table: table)
 		case let alias as Alias: return visit(alias: alias)
-		case let projection as Projection : return visit(projection: projection)
 		case let join as Join: return visit(join: join)
+		case let projection as Projection : return visit(projection: projection)
+		case let selection as Selection : return visit(selection: selection)
         default: return visit(unknownRelationType: relation)
 		}
 	}

@@ -4,7 +4,16 @@ import Schema
 
 public protocol ExpressionConvertible {
     var toExpression: Expression { get }
+
+    func label(as alias: String) -> Expression
 }
+
+extension ExpressionConvertible {
+    public func label(as alias: String) -> Expression {
+        return .alias(toExpression, alias)
+    }
+}
+
 
 /// SQL Expression.
 ///
@@ -80,10 +89,6 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
         case let .attributeReference(ref): return ref.name
         default: return nil
         }
-    }
-
-    public func label(as alias: String) -> Expression {
-        return .alias(self, alias)
     }
 
     /// List of children from which the expression is composed. Does not go

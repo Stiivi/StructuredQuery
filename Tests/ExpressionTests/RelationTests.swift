@@ -108,6 +108,45 @@ class ProjectionTestCase: XCTestCase {
         ])
 
     }
+
+    // Attribute Reference Errors
+    // --------------------------
+    func testAmbiguousReference() {
+        var p: Relation
+
+        p = events.project([events["id"], events["id"]])
+        XCTAssertEqual(p.attributes, [
+            AttributeReference(index:.ambiguous, name: "id", relation: p),
+            AttributeReference(index:.ambiguous, name: "id", relation: p)
+        ])
+
+        p = events.project([events["name"].label(as: "other"),
+                            events["value"].label(as: "other")])
+        XCTAssertEqual(p.attributes, [
+            AttributeReference(index:.ambiguous, name: "other", relation: p),
+            AttributeReference(index:.ambiguous, name: "other", relation: p)
+        ])
+    }
+
+    // Join
+    // ----
+    func testJoin() {
+        let joined: Relation
+        let left = events.alias(as: "left")
+        let right = events.alias(as: "right")
+
+        joined = left.join(right)
+
+        XCTAssertEqual(joined.attributes, [
+            AttributeReference(index:.concrete(0), name: "id", relation: left),
+            AttributeReference(index:.concrete(1), name: "name", relation: left),
+            AttributeReference(index:.concrete(2), name: "value", relation: left),
+            AttributeReference(index:.concrete(0), name: "id", relation: right),
+            AttributeReference(index:.concrete(1), name: "name", relation: right),
+            AttributeReference(index:.concrete(2), name: "value", relation: right)
+        ])
+    }
+
 /*
     func testSelectAliasColumns() {
         let list = [

@@ -195,33 +195,33 @@ func %(left: Expression, right: Expression) -> Expression {
 
 // Comparison Operators
 //
-func ==(left: Expression, right: Expression) -> Expression {
-    return .binary("eq", left, right)
+func ==(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("eq", left.toExpression, right.toExpression)
 }
 
-func !=(left: Expression, right: Expression) -> Expression {
-    return .binary("neq", left, right)
+func !=(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("neq", left.toExpression, right.toExpression)
 }
 
 infix operator <>: ComparisonPrecedence
-func <>(left: Expression, right: Expression) -> Expression {
-    return .binary("neq", left, right)
+func <>(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("neq", left.toExpression, right.toExpression)
 }
 
-func <(left: Expression, right: Expression) -> Expression {
-    return .binary("lt", left, right)
+func <(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("lt", left.toExpression, right.toExpression)
 }
 
-func <=(left: Expression, right: Expression) -> Expression {
-    return .binary("le", left, right)
+func <=(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("le", left.toExpression, right.toExpression)
 }
 
-func >(left: Expression, right: Expression) -> Expression {
-    return .binary("gt", left, right)
+func >(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("gt", left.toExpression, right.toExpression)
 }
 
-func >=(left: Expression, right: Expression) -> Expression {
-    return .binary("ge", left, right)
+func >=(left: ExpressionConvertible, right: ExpressionConvertible) -> Expression {
+    return .binary("ge", left.toExpression, right.toExpression)
 }
 
 // TODO: Question: should we follow the "swift" convention of these operators

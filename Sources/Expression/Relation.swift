@@ -150,6 +150,7 @@ public func ==(lhs: Relation, rhs: Relation) -> Bool {
     case let (lrel as Alias, rrel as Alias) where lrel == rrel: return true
     case let (lrel as Join, rrel as Join) where lrel == rrel: return true
     case let (lrel as Projection, rrel as Projection) where lrel == rrel: return true
+    case let (lrel as Selection, rrel as Selection) where lrel == rrel: return true
     default: return false
     }
 }
@@ -159,8 +160,9 @@ extension Relation {
         return Alias(self, as:name)
     }
 
-    public func join(_ right: Relation, type: JoinType = .inner) -> Join {
-        return Join(left: self, right: right, type: type)
+    public func join(_ right: Relation, type: JoinType = .inner,
+                     on predicate: Expression? = nil) -> Join {
+        return Join(left: self, right: right, type: type, on: predicate)
     }
 
     public func project(_ selectList: [ExpressionConvertible]?=nil) -> Projection {
@@ -170,6 +172,10 @@ extension Relation {
         else {
             return Projection(self.attributes, from: self)   
         }
+    }
+
+    public func select(where predicate: Expression) -> Selection {
+        return Selection(relation: self, where: predicate)
     }
 
     public subscript(name: String) -> AttributeReference {

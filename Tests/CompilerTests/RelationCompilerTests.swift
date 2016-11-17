@@ -73,6 +73,15 @@ class RelationCompilerTestCase: XCTestCase {
                        "FROM events JOIN contacts")
 
     }
+    func testVisitJoinOn() {
+        let cond: Expression = events["id"] == contacts["id"]
+        let joined = events.join(contacts, on: cond).project([1])
+        XCTAssertEqual(compile(joined),
+                       "SELECT 1 " +
+                       "FROM events JOIN contacts " +
+                       "ON events.id = contacts.id")
+
+    }
     // Test of this:
     // SELECT i,b, events.name, contacts.id FROM data
 

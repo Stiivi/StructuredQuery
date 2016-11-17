@@ -169,8 +169,18 @@ extension Compiler: RelationVisitor {
         return out
     }
 
+    public func visit(selection: Selection) -> RelationResult {
+        var out: RelationResult
+        let projectionResult = self.visit(relation: selection.relation)
+        let predicate = self.visit(expression: selection.predicate)
+
+        out =  projectionResult + " WHERE " + predicate
+
+        return out
+    }
+
     public func visit(join: Join) -> RelationResult {
-        // TODO: Implement this
+        var out: RelationResult
         let joinString: RelationResult
         switch join.type {
         case .inner: joinString = "JOIN"
@@ -182,7 +192,13 @@ extension Compiler: RelationVisitor {
         let left = visit(relation: join.left)
         let right = visit(relation: join.right)
 
-        return left + joinString.pad() + right
+        out = left + joinString.pad() + right
+
+        if let predicate = join.predicate {
+            out += " ON " + visit(expression: predicate)
+        }
+
+        return out
     }
 
     public func visit(unknownRelationType relation: Relation) -> RelationResult {

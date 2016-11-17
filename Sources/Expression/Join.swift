@@ -10,13 +10,16 @@ public class Join {
     public let left: Relation
     public let right: Relation
     public let type: JoinType
+    public let predicate: Expression?
 
-    public init(left: Relation, right: Relation, type: JoinType = .inner) {
+    public init(left: Relation, right: Relation, type: JoinType = .inner,
+                on predicate: Expression? = nil) {
         // TODO: Don't allow relations with same aliases to be joined
         // Joining tables with same name produces ambiguous columns
         self.left = left
         self.right = right
         self.type = type
+        self.predicate = predicate
     }
 }
 
@@ -40,4 +43,5 @@ public func ==(lhs: Join, rhs: Join) -> Bool {
     return lhs.type == rhs.type
             && lhs.left == rhs.left
             && lhs.right == rhs.right
+            && lhs.predicate == rhs.predicate
 }
