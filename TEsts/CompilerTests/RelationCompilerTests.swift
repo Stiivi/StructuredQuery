@@ -54,10 +54,26 @@ class RelationCompilerTestCase: XCTestCase {
         XCTAssertEqual(compile(stmt), "SELECT 10, 20, 'thirty'")
     }
 
-    func testVisitSimpleFromSelect() {
+    func testVisitSimpleFromProjection() {
         let stmt = data.project([data["i"], data["b"]])
-        XCTAssertEqual(compile(stmt), "SELECT i, b FROM data")
+        XCTAssertEqual(compile(stmt), "SELECT data.i, data.b FROM data")
     }
+    func testVisitSimpleFromAlias() {
+        let other = data.alias(as: "other")
+        let stmt = other.project([other["i"], other["b"]])
+        XCTAssertEqual(compile(stmt),
+                       "SELECT other.i, other.b FROM data AS other")
+    }
+    func testVisitJoin() {
+        let joined = events.join(contacts).project()
+        XCTAssertEqual(compile(joined),
+                       "SELECT events.id, events.name, events.value, " +
+                       "contacts.id, contacts.address, contacts.city, " +
+                       "contacts.country " +
+                       "FROM events JOIN contacts")
+
+    }
+    // Test of this:
     // SELECT i,b, events.name, contacts.id FROM data
 
 }

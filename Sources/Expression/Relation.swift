@@ -47,7 +47,7 @@ public enum AttributeIndex: Equatable {
     }
 }
 
-public struct AttributeReference {
+public struct AttributeReference: Equatable {
     public let index: AttributeIndex
     public let name: String?
     public let relation: Relation
@@ -78,7 +78,12 @@ public struct AttributeReference {
 
 extension AttributeReference: CustomStringConvertible {
     public var description: String {
-        let key = name ?? "[\(index)]"
+        let key: String
+        switch index {
+        case .concrete(let i): key = name.map { $0 } ?? "[\(i)]" 
+        case .ambiguous: key = name.map { "[ambiguous `\($0)]`"} ?? "[ambiguous]"
+        case .unknown: key = name.map { "[unknown `\($0)]`"} ?? "[unknown]"
+        }
         return "\(relation.debugName).\(key)"
     }
 }
@@ -89,7 +94,7 @@ extension AttributeReference: ExpressionConvertible {
     }
 }
 
-func ==(lhs: AttributeReference, rhs: AttributeReference) -> Bool {
+public func ==(lhs: AttributeReference, rhs: AttributeReference) -> Bool {
     return lhs.index == rhs.index
             && lhs.name == rhs.name
             && lhs.relation == rhs.relation
@@ -140,8 +145,8 @@ public protocol Relation {
 }
 
 public func ==(lhs: Relation, rhs: Relation) -> Bool {
-// public func ==<T: Relation, U:Relation>(lhs: T, rhs: U) -> Bool {
     switch (lhs, rhs) {
+    case let (lrel as Table, rrel as Table) where lrel == rrel: return true
     case let (lrel as Alias, rrel as Alias) where lrel == rrel: return true
     case let (lrel as Join, rrel as Join) where lrel == rrel: return true
     case let (lrel as Projection, rrel as Projection) where lrel == rrel: return true
@@ -152,6 +157,10 @@ public func ==(lhs: Relation, rhs: Relation) -> Bool {
 extension Relation {
     public func alias(as name: String) -> Alias {
         return Alias(self, as:name)
+    }
+
+    public func join(_ right: Relation, type: JoinType = .inner) -> Join {
+        return Join(left: self, right: right, type: type)
     }
 
     public func project(_ selectList: [ExpressionConvertible]?=nil) -> Projection {

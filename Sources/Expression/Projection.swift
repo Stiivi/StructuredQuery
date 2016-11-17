@@ -75,10 +75,10 @@ extension Projection: Relation {
 
     public var debugName: String {
         if let relation = relation {
-            return "[\(relation.debugName)]"
+            return "π(\(relation.debugName))"
         }
         else {
-            return "[(empty relation)]"
+            return "π(∅)"
         }
     }
 

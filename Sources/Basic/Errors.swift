@@ -23,26 +23,6 @@ public func ==(lhs: ExpressionError, rhs: ExpressionError) -> Bool {
     return lhs.description == rhs.description
 }
 
-public enum RelationError: Error, CustomStringConvertible, Equatable {
-    case emptyColumnList
-    // TODO: Rename to anonymousAttribute
-    case anonymousColumn(Int)
-    case duplicateColumnName(String)
-
-    public var description: String {
-        switch self {
-        case .emptyColumnList: return "Column list is empty"
-        case let .anonymousColumn(i): return "Column at index \(i) has no name"
-        case let .duplicateColumnName(name): return "Duplicate column name '\(name)'"
-        }
-    }
-}
-
-public func ==(lhs: RelationError, rhs: RelationError) -> Bool {
-    // FIXME: Use proper comparison
-    return lhs.description == rhs.description
-}
-
 public enum CompilerError: Error, CustomStringConvertible, Equatable {
     case unknownBinaryOperator(String)
     case unknownUnaryOperator(String)

@@ -20,76 +20,107 @@ class ProjectionTestCase: XCTestCase {
     )
 
     func testProjectionFromNothing(){
+        //
+        // SELECT 1
+        //
         var rel: Projection = Projection([1])
 
+        // Basic sanity check
         XCTAssertEqual(rel.selectList.count, 1)
         XCTAssertTrue(rel.relation == nil)
-        // XCTAssertEqual(select.baseTables, [])
 
+        // Relation Conformance
+        XCTAssertEqual(rel.attributeExpressions, rel.selectList)
+        XCTAssertEqual(rel.attributes, [
+            AttributeReference(index:.concrete(0), name: nil, relation: rel)
+        ])
+
+        //
+        // SELECT 1 as scalar
+        //
         let expr = Expression.integer(1).label(as: "scalar")
 
         rel = Projection([expr])
 
-        XCTAssertEqual(rel.selectList.count, 1)
-        XCTAssertEqual(rel.selectList.keys, ["scalar"])
         XCTAssertTrue(rel.relation == nil)
+        XCTAssertEqual(rel.attributes, [
+            AttributeReference(index:.concrete(0), name: "scalar", relation: rel)
+        ])
         // XCTAssertEqual(select.baseTables, [])
     }
+    // TODO: Ambiguous column
     // Table
     // -----
     func testSelectAllFromOneTable() {
-        let select: Projection
-        let select2: Projection
+        //
+        // SELECT id, name, value FROM events
+        //
+        let p1: Projection
+        let p2: Projection
 
-        select = Projection(events.columns, from: events) 
-        XCTAssertEqual(select.selectList.keys, ["id", "name", "value"])
-        if let relation = select.relation {
-            XCTAssertTrue(relation == events)
-        }
-        else {
-            XCTFail("Relation is nil")
-        }
+        p1 = Projection(events.attributes, from: events) 
+        XCTAssertEqual(p1.attributes, [
+            AttributeReference(index:.concrete(0), name: "id", relation: p1),
+            AttributeReference(index:.concrete(1), name: "name", relation: p1),
+            AttributeReference(index:.concrete(2), name: "value", relation: p1)
+        ])
+
         // XCTAssertEqual(select.baseTables, [events])
 
-        select2 = events.project() 
-        XCTAssertEqual(select2.selectList.keys, ["id", "name", "value"])
-        XCTAssertEqual(select, select2)
+        //
+        // SELECT id, name, value FROM (SELECT id, name, value FROM events)
+        //
+        p2 = events.project() 
+        XCTAssertEqual(p2.attributes, [
+            AttributeReference(index:.concrete(0), name: "id", relation: p2),
+            AttributeReference(index:.concrete(1), name: "name", relation: p2),
+            AttributeReference(index:.concrete(2), name: "value", relation: p2)
+        ])
+        XCTAssertEqual(p1, p2)
     }
     func testSelectSomethingFromTable() {
-        let select: Projection
+        //
+        // SELECT id, name FROM events
+        //
+        let p: Projection
+        let list: [ExpressionConvertible] = [events["name"], events["id"]]
 
-        let list: [ExpressionConvertible] = [events["id"], events["name"]]
-
-        select = Projection(list, from: events)
-        XCTAssertEqual(select.selectList.keys, ["id", "name"])
-        // XCTAssertEqual(select.baseTables, [events])
+        p = Projection(list, from: events)
+        XCTAssertEqual(p.attributes, [
+            AttributeReference(index:.concrete(0), name: "name", relation: p),
+            AttributeReference(index:.concrete(1), name: "id", relation: p)
+        ])
     }
 
     // Alias
     // -----
     func testSelectFromAlias() {
-        let select: Relation
+        let p: Relation
         let alias: Relation
 
-        select = events.project()
-        alias = select.alias(as:"renamed")
+        p = events.project()
+        alias = p.alias(as:"renamed")
 
-        // XCTAssertEqual(select.baseTable, alias.baseTables)
-        XCTAssertEqual(select.columns.map { $0.name },
-                        alias.columns.map { $0.name })
+        XCTAssertEqual(alias.attributes, [
+            AttributeReference(index:.concrete(0), name: "id", relation: alias),
+            AttributeReference(index:.concrete(1), name: "name", relation: alias),
+            AttributeReference(index:.concrete(2), name: "value", relation: alias)
+        ])
 
     }
-
+/*
     func testSelectAliasColumns() {
-        let selection = [
+        let list = [
             events["name"].label(as:"type"),
             (events["value"] * 100).label(as: "greater_value"),
         ]
 
-        let select = events.select(selection)
-        XCTAssertEqual(select.columns.map {$0.name}, ["type", "greater_value"])
-
+        let p = events.select(list)
+        XCTAssertEqual(alias.attributes, [
+            AttributeReference(index:.concrete(0), name: "type", relation: p),
+            AttributeReference(index:.concrete(1), name: "greater_value", relation: p),
+        ])
     }
-
-    // test SELECT x.? FROM y
+*/
+    // TODO: SELECT x.? FROM y
 }
