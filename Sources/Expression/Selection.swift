@@ -27,4 +27,11 @@ extension Selection: Relation {
     public var attributeExpressions: [Expression] {
         return relation.attributeExpressions
     }
+
+    public var immediateRelations: [Relation] {
+        return relation.immediateRelations
+    }
+    public var baseRelations: [Relation] {
+        return relation.baseRelations
+    }
 }

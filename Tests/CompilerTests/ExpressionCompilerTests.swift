@@ -11,7 +11,7 @@ class ExpressionCompilerTestCase: XCTestCase {
 
         switch result {
         case .value(let str): return str
-        case .failure(let errors): return "ERROR"
+        case .failure(_): return "ERROR"
         }
     }
 

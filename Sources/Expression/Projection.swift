@@ -74,12 +74,14 @@ extension Projection: Relation {
     }
 
     public var debugName: String {
-        if let relation = relation {
-            return "π(\(relation.debugName))"
-        }
-        else {
-            return "π(∅)"
-        }
+        return relation.map { "π(\($0.debugName))" } ?? "π(∅)"
+    }
+
+    public var immediateRelations: [Relation] {
+        return relation.map { $0.immediateRelations } ?? []
+    }
+    public var baseRelations: [Relation] {
+        return relation.map { $0.baseRelations } ?? []
     }
 
 }

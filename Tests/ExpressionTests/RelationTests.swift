@@ -6,19 +6,19 @@ import XCTest
 
 // TODO: Base Tables!!!
 
-class ProjectionTestCase: XCTestCase {
-    let events = Table("events", 
-        Column("id", INTEGER),
-        Column("name", TEXT),
-        Column("value", INTEGER)
-    )
-    let contacts = Table("contacts", 
-        Column("id", INTEGER),
-        Column("address", TEXT),
-        Column("city", TEXT),
-        Column("country", TEXT)
-    )
+let events = Table("events", 
+    Column("id", INTEGER),
+    Column("name", TEXT),
+    Column("value", INTEGER)
+)
+let contacts = Table("contacts", 
+    Column("id", INTEGER),
+    Column("address", TEXT),
+    Column("city", TEXT),
+    Column("country", TEXT)
+)
 
+class ProjectionTestCase: XCTestCase {
     func testProjectionFromNothing(){
         //
         // SELECT 1
@@ -91,7 +91,9 @@ class ProjectionTestCase: XCTestCase {
             AttributeReference(index:.concrete(1), name: "id", relation: p)
         ])
     }
+}
 
+class AliasTestCase: XCTestCase {
     // Alias
     // -----
     func testSelectFromAlias() {
@@ -108,25 +110,8 @@ class ProjectionTestCase: XCTestCase {
         ])
 
     }
-
-    // Attribute Reference Errors
-    // --------------------------
-    func testAmbiguousReference() {
-        var p: Relation
-
-        p = events.project([events["id"], events["id"]])
-        XCTAssertEqual(p.attributes, [
-            AttributeReference(index:.ambiguous, name: "id", relation: p),
-            AttributeReference(index:.ambiguous, name: "id", relation: p)
-        ])
-
-        p = events.project([events["name"].label(as: "other"),
-                            events["value"].label(as: "other")])
-        XCTAssertEqual(p.attributes, [
-            AttributeReference(index:.ambiguous, name: "other", relation: p),
-            AttributeReference(index:.ambiguous, name: "other", relation: p)
-        ])
-    }
+}
+class JoinTestCase: XCTestCase {
 
     // Join
     // ----
@@ -146,7 +131,116 @@ class ProjectionTestCase: XCTestCase {
             AttributeReference(index:.concrete(2), name: "value", relation: right)
         ])
     }
+}
 
+class RelationTestCase: XCTestCase {
+    // Attribute Reference Errors
+    // --------------------------
+    func testAmbiguousReference() {
+        var p: Relation
+
+        p = events.project([events["id"], events["id"]])
+        XCTAssertEqual(p.attributes, [
+            AttributeReference(index:.ambiguous, name: "id", relation: p),
+            AttributeReference(index:.ambiguous, name: "id", relation: p)
+        ])
+
+        p = events.project([events["name"].label(as: "other"),
+                            events["value"].label(as: "other")])
+        XCTAssertEqual(p.attributes, [
+            AttributeReference(index:.ambiguous, name: "other", relation: p),
+            AttributeReference(index:.ambiguous, name: "other", relation: p)
+        ])
+    }
+
+    // Errors
+    // ------
+
+    // Select column from nothing
+    // SELECT id
+    // SELECT events.id FROM contacts
+    func testInvalidColumn() {
+        let p = Projection([events["id"]])
+    }
+
+
+    func assertEqual(_ lhs: [Relation], _ rhs: [Relation], file: StaticString = #file, line: UInt = #line) {
+        if lhs.count != rhs.count
+                || zip(lhs, rhs).first(where: { l, r in l != r }) != nil {
+            XCTFail("Relation lists are not equal: left: \(lhs) right: \(rhs)",
+                    file: file, line: line)    
+        }
+    }
+
+    // Children and bases
+    //
+    func testChildren() {
+        let a = Table("a", Column("id", INTEGER))
+        let b = Table("b", Column("id", INTEGER))
+        let c = Table("c", Column("id", INTEGER))
+        var rel: Relation
+        var x: Relation
+
+        // SELECT * FROM a
+        //      C: a
+        //      B: a
+        rel = a.project()
+        assertEqual(rel.immediateRelations, [a])
+        assertEqual(rel.baseRelations, [a])
+        //
+        // SELECT * FROM a JOIN b
+        //      C: a, b
+        //      B: a, b
+
+        rel = a.join(b)
+        assertEqual(rel.immediateRelations, [a, b])
+        assertEqual(rel.baseRelations, [a, b])
+
+        rel = a.join(b).project()
+        assertEqual(rel.immediateRelations, [a, b])
+        assertEqual(rel.baseRelations, [a, b])
+
+        // SELECT * FROM a AS x
+        //
+        x = a.alias(as: "x")
+        rel = x.project()
+        assertEqual(rel.immediateRelations, [x])
+        assertEqual(rel.baseRelations, [a])
+
+        // SELECT * FROM (SELECT * FROM a) AS x)
+        x = a.project().alias(as: "x")
+        rel = a.join(b).project()
+        assertEqual(rel.immediateRelations, [a, b])
+        assertEqual(rel.baseRelations, [a, b])
+
+        //
+        // SELECT * FROM (SELECT * FROM a JOIN b) x
+        //      C: x
+        //      B: a, b
+
+        x = a.join(b).alias(as: "x")
+        rel = x.project()
+        assertEqual(rel.immediateRelations, [x])
+        assertEqual(rel.baseRelations, [a, b])
+
+        //
+        // SELECT * FROM a JOIN b JOIN c
+        //      C: a, b, c
+        //      B: a, b, c
+        rel = a.join(b).join(c)
+        assertEqual(rel.immediateRelations, [a, b, c])
+        assertEqual(rel.baseRelations, [a, b, c])
+
+        //
+        // SELECT * FROM a JOIN b JOIN c AS x
+        //      C: a, b, x
+        //      B: a, b, c
+        x = c.alias(as: "x")
+        rel = a.join(b).join(x)
+        assertEqual(rel.immediateRelations, [a, b, x])
+        assertEqual(rel.baseRelations, [a, b, c])
+
+    }
 /*
     func testSelectAliasColumns() {
         let list = [

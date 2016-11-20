@@ -37,6 +37,13 @@ extension Join: Relation {
     public var attributeExpressions: [Expression] {
         return left.attributeExpressions + right.attributeExpressions
     }
+
+    public var immediateRelations: [Relation] {
+        return left.immediateRelations + right.immediateRelations
+    }
+    public var baseRelations: [Relation] {
+        return left.baseRelations + right.baseRelations
+    }
 }
 
 public func ==(lhs: Join, rhs: Join) -> Bool {

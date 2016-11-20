@@ -82,6 +82,7 @@ class RelationCompilerTestCase: XCTestCase {
                        "ON events.id = contacts.id")
 
     }
+
     // Test of this:
     // SELECT i,b, events.name, contacts.id FROM data
 

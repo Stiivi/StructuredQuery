@@ -37,4 +37,11 @@ extension Alias: Relation {
     public var attributeExpressions: [Expression] {
         return relation.attributeExpressions
     }
+
+    public var immediateRelations: [Relation] {
+        return [self]
+    }
+    public var baseRelations: [Relation] {
+        return relation.baseRelations
+    }
 }

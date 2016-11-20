@@ -130,6 +130,14 @@ public protocol Relation {
     /// expression is returned.
     subscript(name: String) -> AttributeReference { get }
 
+    /// Underlying relations
+    /// Immediate relations that the receiver is derived from
+    var immediateRelations: [Relation] { get }
+    /// Ultimate relations the receiver and it's childred is derived from. If
+    /// the relation is not derived, such as table, then `baseRelations` is
+    /// empty list.
+    var baseRelations: [Relation] { get }
+
     /// List of errors associated with the receiver.
     ///
     /// The errors are not dialect specific.
@@ -153,6 +161,9 @@ public func ==(lhs: Relation, rhs: Relation) -> Bool {
     case let (lrel as Selection, rrel as Selection) where lrel == rrel: return true
     default: return false
     }
+}
+public func !=(lhs: Relation, rhs: Relation) -> Bool {
+    return !(lhs == rhs)
 }
 
 extension Relation {
@@ -209,5 +220,12 @@ extension Table: Relation {
         return self.columnDefinitions.map {
             .tableColumn($0.name, self)
         }
+    }
+
+    public var immediateRelations: [Relation] {
+        return [self]
+    }
+    public var baseRelations: [Relation] {
+        return [self]
     }
 }
