@@ -6,32 +6,35 @@ import XCTest
 
 // TODO: Base Tables!!!
 
-let events = Table("events", 
+let events = Relation.table(Table("events", 
     Column("id", INTEGER),
     Column("name", TEXT),
     Column("value", INTEGER)
-)
-let contacts = Table("contacts", 
+))
+
+let contacts = Relation.table(Table("contacts", 
     Column("id", INTEGER),
     Column("address", TEXT),
     Column("city", TEXT),
     Column("country", TEXT)
-)
+))
+
+let a = Relation.table(Table("a", Column("id", INTEGER)))
+let b = Relation.table(Table("b", Column("id", INTEGER)))
+let c = Relation.table(Table("c", Column("id", INTEGER)))
+
 
 class ProjectionTestCase: XCTestCase {
     func testProjectionFromNothing(){
         //
         // SELECT 1
         //
-        var rel: Projection = Projection([1])
-
-        // Basic sanity check
-        XCTAssertEqual(rel.selectList.count, 1)
-        XCTAssertTrue(rel.relation == nil)
+        let list: [Expression] = [1]
+        var rel: Relation = Relation.projection(list, .none)
 
         // Relation Conformance
-        XCTAssertEqual(rel.attributeExpressions, rel.selectList)
-        XCTAssertEqual(rel.attributes, [
+        XCTAssertEqual(rel.projectedExpressions, list)
+        XCTAssertEqual(rel.attributeReferences, [
             AttributeReference(index:.concrete(0), name: nil, relation: rel)
         ])
 
@@ -40,26 +43,25 @@ class ProjectionTestCase: XCTestCase {
         //
         let expr = Expression.integer(1).label(as: "scalar")
 
-        rel = Projection([expr])
+        rel = Relation.projection([expr], .none)
 
-        XCTAssertTrue(rel.relation == nil)
-        XCTAssertEqual(rel.attributes, [
+        XCTAssertEqual(rel.attributeReferences, [
             AttributeReference(index:.concrete(0), name: "scalar", relation: rel)
         ])
-        // XCTAssertEqual(select.baseTables, [])
     }
-    // TODO: Ambiguous column
     // Table
     // -----
     func testSelectAllFromOneTable() {
         //
         // SELECT id, name, value FROM events
         //
-        let p1: Projection
-        let p2: Projection
+        let p1: Relation
+        let p2: Relation
+        let exprs = events.projectedExpressions
 
-        p1 = Projection(events.attributes, from: events) 
-        XCTAssertEqual(p1.attributes, [
+        p1 = .projection(exprs, events.relation) 
+
+        XCTAssertEqual(p1.attributeReferences, [
             AttributeReference(index:.concrete(0), name: "id", relation: p1),
             AttributeReference(index:.concrete(1), name: "name", relation: p1),
             AttributeReference(index:.concrete(2), name: "value", relation: p1)
@@ -71,7 +73,7 @@ class ProjectionTestCase: XCTestCase {
         // SELECT id, name, value FROM (SELECT id, name, value FROM events)
         //
         p2 = events.project() 
-        XCTAssertEqual(p2.attributes, [
+        XCTAssertEqual(p2.attributeReferences, [
             AttributeReference(index:.concrete(0), name: "id", relation: p2),
             AttributeReference(index:.concrete(1), name: "name", relation: p2),
             AttributeReference(index:.concrete(2), name: "value", relation: p2)
@@ -82,11 +84,11 @@ class ProjectionTestCase: XCTestCase {
         //
         // SELECT id, name FROM events
         //
-        let p: Projection
-        let list: [ExpressionConvertible] = [events["name"], events["id"]]
+        let p: Relation
+        let list: [Expression] = [events["name"], events["id"]]
 
-        p = Projection(list, from: events)
-        XCTAssertEqual(p.attributes, [
+        p = .projection(list, events.relation)
+        XCTAssertEqual(p.attributeReferences, [
             AttributeReference(index:.concrete(0), name: "name", relation: p),
             AttributeReference(index:.concrete(1), name: "id", relation: p)
         ])
@@ -103,14 +105,14 @@ class AliasTestCase: XCTestCase {
         p = events.project()
         alias = p.alias(as:"renamed")
 
-        XCTAssertEqual(alias.attributes, [
+        XCTAssertEqual(alias.attributeReferences, [
             AttributeReference(index:.concrete(0), name: "id", relation: alias),
             AttributeReference(index:.concrete(1), name: "name", relation: alias),
             AttributeReference(index:.concrete(2), name: "value", relation: alias)
         ])
-
     }
 }
+
 class JoinTestCase: XCTestCase {
 
     // Join
@@ -122,7 +124,7 @@ class JoinTestCase: XCTestCase {
 
         joined = left.join(right)
 
-        XCTAssertEqual(joined.attributes, [
+        XCTAssertEqual(joined.attributeReferences, [
             AttributeReference(index:.concrete(0), name: "id", relation: left),
             AttributeReference(index:.concrete(1), name: "name", relation: left),
             AttributeReference(index:.concrete(2), name: "value", relation: left),
@@ -140,14 +142,14 @@ class RelationTestCase: XCTestCase {
         var p: Relation
 
         p = events.project([events["id"], events["id"]])
-        XCTAssertEqual(p.attributes, [
+        XCTAssertEqual(p.attributeReferences, [
             AttributeReference(index:.ambiguous, name: "id", relation: p),
             AttributeReference(index:.ambiguous, name: "id", relation: p)
         ])
 
         p = events.project([events["name"].label(as: "other"),
                             events["value"].label(as: "other")])
-        XCTAssertEqual(p.attributes, [
+        XCTAssertEqual(p.attributeReferences, [
             AttributeReference(index:.ambiguous, name: "other", relation: p),
             AttributeReference(index:.ambiguous, name: "other", relation: p)
         ])
@@ -160,7 +162,7 @@ class RelationTestCase: XCTestCase {
     // SELECT id
     // SELECT events.id FROM contacts
     func testInvalidColumn() {
-        let p = Projection([events["id"]])
+        // let p = Relation.projection([events["id"]], Relation.none)
     }
 
 
@@ -175,9 +177,6 @@ class RelationTestCase: XCTestCase {
     // Children and bases
     //
     func testChildren() {
-        let a = Table("a", Column("id", INTEGER))
-        let b = Table("b", Column("id", INTEGER))
-        let c = Table("c", Column("id", INTEGER))
         var rel: Relation
         var x: Relation
 
@@ -255,5 +254,16 @@ class RelationTestCase: XCTestCase {
         ])
     }
 */
+
+    func testInvalidRelationReference() {
+        // SELECT a.id FROM b
+        var rel: Relation
+
+        rel = b.project([a["id"]])
+        if rel.error == nil {
+            XCTFail("Invalid reference should cause an error: \(rel)")
+        }
+        
+    }
     // TODO: SELECT x.? FROM y
 }

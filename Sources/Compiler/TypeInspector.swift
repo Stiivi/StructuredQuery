@@ -86,7 +86,7 @@ public class TypeInspector: ExpressionVisitor {
             return ErrorDataType(message: error.description)
         }
         // Value is guaranteed to exist if there is no error
-        let expr = reference.relation.attributeExpressions[reference.index.value!]
+        let expr = reference.relation.projectedExpressions[reference.index.value!]
         return visit(expression: expr)
     }
 

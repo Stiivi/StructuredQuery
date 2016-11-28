@@ -144,66 +144,69 @@ extension Compiler: ExpressionVisitor {
 extension Compiler: RelationVisitor {
     public typealias RelationResult = ResultString<CompilerError>
 
+    public func visitNoneRelation() -> RelationResult {
+        // FIXME: This sounds confusing, we need to find better way of handling
+        // this
+        return .failure([.internalError("Visited None relation")])
+    }
+
     public func visit(table: Table) -> RelationResult {
         // TODO: User formatter and schema
         return .value(table.name)
     }
 
-    public func visit(alias: Alias) -> RelationResult {
-        let aliased = visit(relation: alias.relation)
-
-        return aliased + " AS \(alias.name)"
+    public func visit(rename name: String, relation: Relation) -> RelationResult {
+        // TODO: quote name
+        return visit(relation: relation) + " AS \(name)"
     }
 
-    public func visit(projection: Projection) -> RelationResult {
+    public func visit(projection selectList: [Expression],
+                from relation: Relation) -> RelationResult {
         var out: RelationResult
-        let selectList = projection.selectList.map { visit(expression: $0) }
+        let selectList = selectList.map { visit(expression: $0) }
         let selectListResult = concatenate(selectList, separator: ", ")
 
         out = "SELECT " + selectListResult
 
-        if let relation = projection.relation {
+        if relation != .none {
             out += " FROM " + visit(relation: relation)
         }
 
         return out
     }
 
-    public func visit(selection: Selection) -> RelationResult {
-        var out: RelationResult
-        let projectionResult = self.visit(relation: selection.relation)
-        let predicate = self.visit(expression: selection.predicate)
-
-        out =  projectionResult + " WHERE " + predicate
-
-        return out
+    public func visit(selection predicate: Expression, from relation: Relation) -> RelationResult {
+        return visit(relation: relation)
+                + " WHERE " + visit(expression: predicate)
     }
 
-    public func visit(join: Join) -> RelationResult {
+    public func visit(join type: JoinType, left: Relation, right: Relation,
+            on predicate: Expression?) -> RelationResult {
+
         var out: RelationResult
         let joinString: RelationResult
-        switch join.type {
+
+        switch type {
         case .inner: joinString = "JOIN"
         case .leftOuter: joinString = "LEFT OUTER JOIN"
         case .rightOuter: joinString = "RIGHT OUTER JOIN"
         case .fullOuter: joinString = "FULL OUTER JOIN"
         }
 
-        let left = visit(relation: join.left)
-        let right = visit(relation: join.right)
+        out = visit(relation: left)
+                + joinString.pad()
+                + visit(relation: right)
 
-        out = left + joinString.pad() + right
-
-        if let predicate = join.predicate {
+        if let predicate = predicate {
             out += " ON " + visit(expression: predicate)
         }
 
         return out
     }
 
-    public func visit(unknownRelationType relation: Relation) -> RelationResult {
-        let typeName = String(describing: type(of:relation))
-        return .failure([.internalError("Unknown relation type: \(typeName)")])
+    public func visit(error: ExpressionError, relation: Relation) -> RelationResult {
+        // FIXME: Make use of relation
+        return .failure([CompilerError.expression(error)])
     }
 
 }

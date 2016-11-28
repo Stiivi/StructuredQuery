@@ -3,6 +3,8 @@ import Types
 
 public typealias ColumnList = LookupList<String, Column>
 
+/// Table in a relational database
+///
 public class Table: Hashable {
     public let name: String
     public let schema: String?

@@ -51,11 +51,7 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
     /// Reference to an attribute of any relation
     ///
     /// - See: AttributeReference
-    case attributeReference(AttributeReference)
-
-    /// Reference to physical table column
-    ///
-    case tableColumn(String, Table)
+    case attribute(AttributeReference)
 
     /// Represents an errorneous expression – an expression that was not
     /// possible to determine. For example a column was missing.
@@ -85,8 +81,7 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
     public var alias: String? {
         switch self {
         case let .alias(_, name): return name
-        case let .tableColumn(name, _): return name
-        case let .attributeReference(ref): return ref.name
+        case let .attribute(ref): return ref.name
         default: return nil
         }
     }
@@ -101,6 +96,33 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
         case let .alias(expr, _): return [expr]
         default: return []
         }
+    }
+
+    /// Return all attribute references used in the expression tree
+    ///
+    /// All occurences are returned as they are observed during the children
+    /// tree traversal.
+    public var attributeReferences: [AttributeReference] {
+        // TODO: Use this flatMap (does not compile)
+        /*
+        let refs: [AttributeReference] = children.flatMap {
+            child in
+            let out: [AttributeReference]
+            switch child {
+            case .attribute(let attr): out = [attr]
+            default: out = child.attributeReferences
+            }
+            return out
+        }*/
+        var refs = [AttributeReference]()
+        children.forEach {
+            child in
+            switch child {
+            case .attribute(let attr): refs.append(attr)
+            default: refs += child.attributeReferences
+            }
+        }
+        return refs
     }
 
     public var toExpression: Expression {
@@ -122,8 +144,7 @@ public func ==(left: Expression, right: Expression) -> Bool {
     case let(.function(lname, largs), .function(rname, rargs))
                 where lname == rname && largs == rargs: return true
     case let(.parameter(lval), .parameter(rval)) where lval == rval: return true
-    case let(.tableColumn(ln, lr), .tableColumn(rn, rr)) where ln == rn && lr == rr: return true
-    case let(.attributeReference(lval), .attributeReference(rval)) where lval == rval: return true
+    case let(.attribute(lval), .attribute(rval)) where lval == rval: return true
     case let(.error(lval), .error(rval)) where lval == rval: return true
             
     default: return false

@@ -15,7 +15,6 @@ public protocol ExpressionVisitor {
     func visit(unary op: String, _ arg: Expression) -> VisitorResult
     func visit(function: String, _ args: [Expression]) -> VisitorResult
     func visit(parameter: String) -> VisitorResult
-    func visit(column: String, inTable: Table) -> VisitorResult
     func visit(attribute: AttributeReference) -> VisitorResult
     func visit(error: ExpressionError) -> VisitorResult
 
@@ -47,9 +46,7 @@ extension ExpressionVisitor {
             out = self.visit(function: name, args)
         case let .parameter(name):
             out = self.visit(parameter: name)
-        case let .tableColumn(name, table):
-            out = self.visit(column: name, inTable: table)
-        case let .attributeReference(reference):
+        case let .attribute(reference):
             out = self.visit(attribute: reference)
         case let .error(error):
             out = self.visit(error:error)
@@ -64,25 +61,32 @@ extension ExpressionVisitor {
 
 public protocol RelationVisitor {
     associatedtype RelationResult
+    func visitNoneRelation() -> RelationResult
     func visit(relation: Relation) -> RelationResult
     func visit(table: Table) -> RelationResult
-    func visit(alias: Alias) -> RelationResult
-    func visit(join: Join) -> RelationResult
-    func visit(projection: Projection) -> RelationResult
-    func visit(selection: Selection) -> RelationResult
-    func visit(unknownRelationType: Relation) -> RelationResult
+    func visit(projection: [Expression], from: Relation) -> RelationResult
+    func visit(selection: Expression, from: Relation) -> RelationResult
+    func visit(rename: String, relation: Relation) -> RelationResult
+    func visit(join: JoinType, left: Relation, right: Relation, on: Expression?) -> RelationResult
+    func visit(error: ExpressionError, relation: Relation) -> RelationResult
 }
 
 
 extension RelationVisitor {
 	public func visit(relation: Relation) -> RelationResult {
 		switch relation {
-		case let table as Table: return visit(table: table)
-		case let alias as Alias: return visit(alias: alias)
-		case let join as Join: return visit(join: join)
-		case let projection as Projection : return visit(projection: projection)
-		case let selection as Selection : return visit(selection: selection)
-        default: return visit(unknownRelationType: relation)
+        case .none: return  visitNoneRelation()
+        case let .table(table): return visit(table: table)
+        case let .projection(exprs, relation):
+                return visit(projection: exprs, from: relation)
+        case let .selection(expr, relation):
+                return visit(selection: expr, from: relation)
+        case let .rename(name, relation):
+                return visit(rename: name, relation: relation)
+        case let .ajoin(type, left, right, expr):
+                return visit(join: type, left:left, right: right, on: expr)
+        case let .error(relation, error):
+                return visit(error: error, relation: relation)
 		}
 	}
 }

@@ -6,21 +6,21 @@ import XCTest
 @testable import Compiler
 
 class RelationCompilerTestCase: XCTestCase {
-    let data = Table("data", 
+    let data = Relation.table(Table("data", 
         Column("i", INTEGER),
         Column("t", TEXT),
-        Column("b", BOOLEAN)
+        Column("b", BOOLEAN))
     )
-    let events = Table("events", 
+    let events = Relation.table(Table("events", 
         Column("id", INTEGER),
         Column("name", TEXT),
-        Column("value", INTEGER)
+        Column("value", INTEGER))
     )
-    let contacts = Table("contacts", 
+    let contacts = Relation.table(Table("contacts", 
         Column("id", INTEGER),
         Column("address", TEXT),
         Column("city", TEXT),
-        Column("country", TEXT)
+        Column("country", TEXT))
     )
 
     func compile(_ relation: Relation) -> String {
@@ -33,24 +33,24 @@ class RelationCompilerTestCase: XCTestCase {
     }
 
     func testVisitSimple() {
-        let stmt = Projection([1])
+        let stmt = Relation.projection([1], .none)
         XCTAssertEqual(compile(stmt), "SELECT 1")
     }
 
     func testVisitExpression() {
         let expr: Expression = 10
-        let stmt = Projection([expr + 20 ])
+        let stmt = Relation.projection([expr + 20 ], .none)
         XCTAssertEqual(compile(stmt), "SELECT 10 + 20")
     }
     func testVisitExpressionWithAlias() {
         let expr: Expression = 10
-        let stmt = Projection([expr.label(as:"x")])
+        let stmt = Relation.projection([expr.label(as:"x")], .none)
         XCTAssertEqual(compile(stmt), "SELECT 10 AS x")
     }
 
     func testVisitMultipleSelect() {
         let exprs: [Expression] = [10, 20, "thirty"]
-        let stmt = Projection(exprs)
+        let stmt = Relation.projection(exprs, .none)
         XCTAssertEqual(compile(stmt), "SELECT 10, 20, 'thirty'")
     }
 
@@ -85,6 +85,5 @@ class RelationCompilerTestCase: XCTestCase {
 
     // Test of this:
     // SELECT i,b, events.name, contacts.id FROM data
-
 }
 

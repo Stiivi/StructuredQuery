@@ -1,6 +1,8 @@
 import Basic
 import Schema
 
+/// Relation name with optional qualifier
+///
 public struct QualifiedRelationName {
     let name: String
     let schema: String?
@@ -25,101 +27,224 @@ extension QualifiedRelationName: Hashable {
     }
 }
 
-public enum AttributeIndex: Equatable {
-    case concrete(Int)
-    case ambiguous
-    case unknown
 
-    public var value: Int? {
-        switch self {
-        case .concrete(let index): return index
-        default: return nil
-        }
-    }
-
-    public static func ==(lhs: AttributeIndex, rhs: AttributeIndex) -> Bool {
-        switch (lhs, rhs) {
-        case let (.concrete(lval), .concrete(rval)) where lval == rval: return true
-        case (.ambiguous, .ambiguous): return true
-        case (.unknown, .unknown): return true
-        default: return false
-        }
-    }
+/// Type that can be represented as a relation
+public protocol RelationRepresentable {
+    var relation: Relation { get }
 }
 
-public struct AttributeReference: Equatable {
-    public let index: AttributeIndex
-    public let name: String?
-    public let relation: Relation
-
-    public init(index: AttributeIndex, name: String?, relation: Relation) {
-        self.index = index
-        self.name = name
-        self.relation = relation
-    }
-
-    public var error: ExpressionError? {
-        switch index {
-        case .concrete(let i):
-            if name != nil {
-                // We have both: index and name
-                return nil
-            }
-            else {
-                return .anonymousAttribute(i, relation.debugName)
-            }
-        case .ambiguous:
-                return .ambiguousAttribute(name ?? "(unnamed)", relation.debugName)
-        case .unknown:
-                return .unknownAttribute(name ?? "(unnamed)", relation.debugName)
-        }
-    }
+public enum JoinType {
+    case inner
+    case leftOuter
+    case rightOuter
+    case fullOuter
 }
 
-extension AttributeReference: CustomStringConvertible {
-    public var description: String {
-        let key: String
-        switch index {
-        case .concrete(let i): key = name.map { $0 } ?? "[\(i)]" 
-        case .ambiguous: key = name.map { "[ambiguous `\($0)]`"} ?? "[ambiguous]"
-        case .unknown: key = name.map { "[unknown `\($0)]`"} ?? "[unknown]"
-        }
-        return "\(relation.debugName).\(key)"
-    }
-}
+// TODO: Array literal convertible
+/// Describes a relation
+///
+public indirect enum Relation: Equatable {
+    /// No relation, used for extended projection (expressions)
+    case none
 
-extension AttributeReference: ExpressionConvertible {
-    public var toExpression: Expression {
-        return .attributeReference(self)
-    }
-}
+    /// Physical relation
+    case table(Table)
 
-public func ==(lhs: AttributeReference, rhs: AttributeReference) -> Bool {
-    return lhs.index == rhs.index
-            && lhs.name == rhs.name
-            && lhs.relation == rhs.relation
-}
+    /// Projection of attributes or extended attributes
+    case projection([Expression], Relation)
 
-/// Represents a relation
-public protocol Relation {
-    /// Name of the relation
-    var qualifiedName: QualifiedRelationName? { get }
-
-    /// List of references to named columns of the relation.
-    ///
-    var attributes: [AttributeReference] { get }
-    var attributeExpressions: [Expression] { get }
+    /// Selection from a relation by a predicate
+    case selection(Expression, Relation)
     
+    /// Rename
+    case rename(String, Relation)
+
+    /// Join
+    // TODO: Find a better name. We prefer to keep `join` for the function name
+    case ajoin(JoinType, Relation, Relation, Expression?)
+
+    case error(Relation, ExpressionError)
+
+    // TODO: union etc.
+    // case union(Relation)
+    // case minus(Relation)
+
+    /// Name of the relation
+    public var qualifiedName: QualifiedRelationName? {
+        switch self {
+        case .table(let table):
+            return QualifiedRelationName(name: table.name, schema: table.schema)
+        case .rename(let name, _):
+            return QualifiedRelationName(name: name)
+        default:
+            return nil
+        } 
+    }
+
+    /// List of references to attributes of this relation.
+    /// 
+    /// If the underlying expression has an alias, then the reference will have
+    /// equal name to the alias. If there are multiple attributes with the same
+    /// alias, then all of the references with the same name will be marked as
+    /// ambiguous. If the underlying expression does not have an alias, then
+    /// the reference will contain only index of the expression within the list
+    /// of attribute expressions.
+    ///
+    /// - Note: If you want to get a list of attributes to be used in
+    /// transformations and other expressions for derived relations see
+    /// `attributes`
+    ///
+    /// - Returns: list of attribute references
+    ///
+    public var attributeReferences: [AttributeReference] {
+        switch self {
+        case .none: return []
+        case .table(let table):
+            return table.columnDefinitions.enumerated().map {
+                i, col in
+                AttributeReference(index: .concrete(i),
+                                   name: col.name,
+                                   relation: self)
+            }
+        case .projection(let selectList, _):
+            // Gather duplicate attribute names
+            let duplicates = selectList.flatMap{ $0.alias }.duplicates 
+
+            // For every attribute produce a reference that might be:
+            // - regular reference: if attribute has a name and has no
+            //   duplicate
+            // - "ambiguous" reference: if attribute has a name but has a
+            //   duplicate
+            // - anonymous reference: if attribute has no name
+            let refs: [AttributeReference] = selectList.enumerated().map {
+                i, expr in
+                if let name = expr.alias {
+
+                    let index: AttributeIndex
+
+                    if duplicates.contains(name) {
+                        index = .ambiguous 
+                    } 
+                    else {
+                        // We have a name and there is no duplicate.
+                        // We want all attributes to be like this.
+                        index = .concrete(i)
+                    }
+                    return AttributeReference(index: index,
+                                              name: name,
+                                              relation: self)
+                }
+                else {
+                    // Anonymous attribute reference
+                    return AttributeReference(index: .concrete(i),
+                                              name: nil,
+                                              relation: self)
+                }
+            }
+
+            return refs
+        case .selection(_, let relation):
+                return relation.attributeReferences
+        case .rename(_, let relation):
+            // Own the renamed relation's attributes
+			let attributes = relation.attributeReferences.map {
+				attr in
+				return AttributeReference(index: attr.index,
+										  name: attr.name,
+										  relation: self)
+			}
+			return attributes
+        case .ajoin(_, let left, let right, _):
+                return left.attributeReferences + right.attributeReferences
+        case .error: return []
+        
+        } 
+    }
+
+    /// List of expressions that represent attributes of this relation.
+    ///
+    /// These expressions can be used for transformations to derive a relation.
+    /// In SQL statements these expressions are usually rendered as column
+    /// names.
+    public var attributes: [Expression] {
+        return attributeReferences.map { .attribute($0) }
+    }
+
+    /// List of expressions projected from a physical relation or from the
+    /// underlying relations.
+    ///
+    /// These are expressions that describe how an attribute is being computed.
+    /// The list is for example used by a SQL compiler to generate the select
+    /// list.
+    public var projectedExpressions: [Expression] {
+        switch self {
+        case .none: return []
+        case .table: return attributes
+        case .projection(let projectList, _): return projectList
+        case .selection(_, let relation): return relation.projectedExpressions
+        case .rename(_, let relation): return relation.projectedExpressions
+        case .ajoin(_, let left, let right, _):
+                return left.projectedExpressions + right.projectedExpressions
+        case .error: return []
+        } 
+    }
+    
+    /// Underlying relations
+    /// Immediate relations that the receiver is derived from
+    public var immediateRelations: [Relation] {
+        switch self {
+        case .none: return []
+        case .table: return [self]
+        case .projection(_, let relation): return relation.immediateRelations
+        case .selection(_, let relation): return relation.immediateRelations
+        case .rename: return [self]
+        case .ajoin(_, let left, let right, _):
+                return left.immediateRelations + right.immediateRelations
+        case .error: return []
+        } 
+    }
+    /// Ultimate relations the receiver and it's childred is derived from. If
+    /// the relation is not derived, such as table, then `baseRelations` is
+    /// empty list.
+    public var baseRelations: [Relation] {
+        switch self {
+        case .none: return []
+        case .table: return [self]
+        case .projection(_, let relation): return relation.baseRelations
+        case .selection(_, let relation): return relation.baseRelations
+        case .rename(_, let relation): return relation.baseRelations
+        case .ajoin(_, let left, let right, _): return left.baseRelations + right.baseRelations
+        case .error: return []
+        } 
+    }
+
     /// Creates a `Projection` object.
     ///
     /// - Parameter selectList: list of expressions or expression-convertible
     ///                         objects. If `nil` is provided (usually
     ///                         default), then all columns from the selectable
     ///                         are included.
-    func project(_ selectList: [ExpressionConvertible]?) -> Projection
+    public func project(_ selectList: [ExpressionConvertible]?=nil) -> Relation {
+        // FIXME: Check for existence of referenced relations
+        let convertibles = selectList ?? self.attributes
+        let expressions = convertibles.map { $0.toExpression }
+        return .projection(Array(expressions), self) 
+    }
 
     /// Creates an alias for the receiver.
-    func alias(as name: String) -> Alias
+    public func alias(as name: String) -> Relation {
+        return .rename(name, self)
+    }
+
+    public func select(where predicate: Expression) -> Relation {
+        // FIXME: Check for existence of referenced relations
+        return .selection(predicate, self)
+    }
+
+    public func join(_ right: Relation, type: JoinType = .inner,
+                     on predicate: Expression? = nil) -> Relation {
+        return .ajoin(type, self, right, predicate)
+    }
 
     /// Returns a column expression for given column name.
     ///
@@ -128,104 +253,49 @@ public protocol Relation {
     ///
     /// If the selection does not have a column with given name, then an error
     /// expression is returned.
-    subscript(name: String) -> AttributeReference { get }
+    public subscript(name: String) -> Expression { 
+        let ref = attributeReferences.first { $0.name == name }
+                        ?? AttributeReference(index: .unknown, name: name, relation: self)
+        return .attribute(ref)
+    }
 
-    /// Underlying relations
-    /// Immediate relations that the receiver is derived from
-    var immediateRelations: [Relation] { get }
-    /// Ultimate relations the receiver and it's childred is derived from. If
-    /// the relation is not derived, such as table, then `baseRelations` is
-    /// empty list.
-    var baseRelations: [Relation] { get }
-
-    /// List of errors associated with the receiver.
-    ///
-    /// The errors are not dialect specific.
-    // var hasErrors: Bool { get }
-    /// Concrete relation instance errors combined with the common errors
-    // var errors: [Error] { get }
-    /// Common relation errors
-    // var commonErrors: [Error] { get }
-    // var baseRelations: [Relation] { get }
-    // var allErrors: [(Relation, Error)] { get }
     /// Name of the relation used for debugging purposes or error reporting
-    var debugName: String { get }
+    var debugDescription: String {
+        return self.qualifiedName.map { $0.description } ?? "(anonymous)"
+    }
+
+    var error: ExpressionError? {
+        switch self {
+        case .error(_, let val): return val
+        default: return nil
+        }
+    }
 }
 
+extension Relation: RelationRepresentable{
+    public var relation: Relation {
+        return self
+    }
+}
+
+
+// Equality
+//
 public func ==(lhs: Relation, rhs: Relation) -> Bool {
     switch (lhs, rhs) {
-    case let (lrel as Table, rrel as Table) where lrel == rrel: return true
-    case let (lrel as Alias, rrel as Alias) where lrel == rrel: return true
-    case let (lrel as Join, rrel as Join) where lrel == rrel: return true
-    case let (lrel as Projection, rrel as Projection) where lrel == rrel: return true
-    case let (lrel as Selection, rrel as Selection) where lrel == rrel: return true
+    case (.none, .none): return true
+    case let (.table(lval), .table(rval)) where lval == rval: return true
+    case let (.projection(lrel, lexp), .projection(rrel, rexp))
+            where lrel == rrel && lexp == rexp: return true
+    case let (.selection(lval), .selection(rval)) where lval == rval: return true
+    case let (.rename(lval), .rename(rval)) where lval == rval: return true
+    case let (.ajoin(lleft, lright, ltype, lexpr), .ajoin(rleft, rright, rtype, rexpr))
+            where lleft == rleft && lright == rright && ltype == rtype
+                    && lexpr == rexpr: return true
+    case let (.error(lrel, lerr), .error(rrel, rerr))
+            where lrel == rrel && lerr == rerr: return true
     default: return false
     }
 }
-public func !=(lhs: Relation, rhs: Relation) -> Bool {
-    return !(lhs == rhs)
-}
 
-extension Relation {
-    public func alias(as name: String) -> Alias {
-        return Alias(self, as:name)
-    }
 
-    public func join(_ right: Relation, type: JoinType = .inner,
-                     on predicate: Expression? = nil) -> Join {
-        return Join(left: self, right: right, type: type, on: predicate)
-    }
-
-    public func project(_ selectList: [ExpressionConvertible]?=nil) -> Projection {
-        if let selectList = selectList {
-            return Projection(selectList, from: self)   
-        }
-        else {
-            return Projection(self.attributes, from: self)   
-        }
-    }
-
-    public func select(where predicate: Expression) -> Selection {
-        return Selection(relation: self, where: predicate)
-    }
-
-    public subscript(name: String) -> AttributeReference {
-        // TODO: Do we need to check for existence of `name` here?
-        let first = attributes.first { $0.name == name }
-        return first ?? 
-                AttributeReference(index: .unknown, name: name, relation: self)
-    }
-
-    public var debugName: String {
-        return self.qualifiedName.map { $0.description } ?? "(anonymous)"
-    }
-}
-
-extension Table: Relation {
-    public var qualifiedName: QualifiedRelationName? {
-        return QualifiedRelationName(name: name, schema: schema)
-    }
-
-    public var attributes: [AttributeReference] {
-        // We assume that table makes sure that the columns are not ambiguous
-        return self.columnDefinitions.enumerated().map {
-            i, col in
-            AttributeReference(index: .concrete(i),
-                               name: col.name,
-                               relation: self)
-        }
-    }
-
-    public var attributeExpressions: [Expression] {
-        return self.columnDefinitions.map {
-            .tableColumn($0.name, self)
-        }
-    }
-
-    public var immediateRelations: [Relation] {
-        return [self]
-    }
-    public var baseRelations: [Relation] {
-        return [self]
-    }
-}
