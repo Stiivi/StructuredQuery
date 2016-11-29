@@ -68,6 +68,7 @@ public protocol RelationVisitor {
     func visit(selection: Expression, from: Relation) -> RelationResult
     func visit(rename: String, relation: Relation) -> RelationResult
     func visit(join: JoinType, left: Relation, right: Relation, on: Expression?) -> RelationResult
+    func visit(group: [GroupingElement], aggregates: [Expression], relation: Relation) -> RelationResult
     func visit(error: ExpressionError, relation: Relation) -> RelationResult
 }
 
@@ -85,6 +86,8 @@ extension RelationVisitor {
                 return visit(rename: name, relation: relation)
         case let .ajoin(type, left, right, expr):
                 return visit(join: type, left:left, right: right, on: expr)
+        case let .group(elements, aggregates, relation):
+                return visit(group: elements, aggregates: aggregates, relation: relation)
         case let .error(relation, error):
                 return visit(error: error, relation: relation)
 		}

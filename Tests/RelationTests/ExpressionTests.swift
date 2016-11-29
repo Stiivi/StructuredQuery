@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import Expression
+@testable import Relation
 @testable import Schema
 @testable import Types
 

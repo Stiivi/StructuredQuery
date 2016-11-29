@@ -1,5 +1,5 @@
 import Types
-import Expression
+import Relation
 
 /// Protocol that specifies a SQL dialect properties.
 protocol Dialect {

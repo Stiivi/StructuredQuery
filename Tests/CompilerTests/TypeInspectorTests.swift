@@ -1,7 +1,7 @@
 import XCTest
 
 @testable import Types
-@testable import Expression
+@testable import Relation
 @testable import Compiler
 
 class TypeInspectorTestCase: XCTestCase {

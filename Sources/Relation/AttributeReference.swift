@@ -27,6 +27,48 @@ public struct AttributeReference: Hashable {
     public let name: String?
     public let relation: Relation
 
+    /// Collect attribute references from a list of expressions.
+    static func collect(fromExpressions expressions: [Expression],
+            relation: Relation) -> [AttributeReference]
+    {
+        // Gather duplicate attribute names
+        let duplicates = expressions.flatMap{ $0.alias }.duplicates 
+
+        // For every attribute produce a reference that might be:
+        // - regular reference: if attribute has a name and has no
+        //   duplicate
+        // - "ambiguous" reference: if attribute has a name but has a
+        //   duplicate
+        // - anonymous reference: if attribute has no name
+        let refs: [AttributeReference] = expressions.enumerated().map {
+            i, expr in
+            if let name = expr.alias {
+
+                let index: AttributeIndex
+
+                if duplicates.contains(name) {
+                    index = .ambiguous 
+                } 
+                else {
+                    // We have a name and there is no duplicate.
+                    // We want all attributes to be like this.
+                    index = .concrete(i)
+                }
+                return AttributeReference(index: index,
+                                          name: name,
+                                          relation: relation)
+            }
+            else {
+                // Anonymous attribute reference
+                return AttributeReference(index: .concrete(i),
+                                          name: nil,
+                                          relation: relation)
+            }
+        }
+
+        return refs
+    }
+
     public init(index: AttributeIndex, name: String?, relation: Relation) {
         self.index = index
         self.name = name
@@ -79,4 +121,5 @@ public func ==(lhs: AttributeReference, rhs: AttributeReference) -> Bool {
             && lhs.name == rhs.name
             && lhs.relation == rhs.relation
 }
+
 

@@ -2,7 +2,7 @@ import XCTest
 
 @testable import Schema
 @testable import Types
-@testable import Expression
+@testable import Relation
 @testable import Compiler
 
 class RelationCompilerTestCase: XCTestCase {

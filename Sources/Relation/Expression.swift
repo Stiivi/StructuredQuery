@@ -20,7 +20,7 @@ extension ExpressionConvertible {
 /// Core data type that represents multiple types of a SQL expression nodes:
 /// literals, NULL, binary and unary operators, function calls, etc.
 
-public indirect enum Expression: Equatable, ExpressionConvertible {
+public indirect enum Expression: Hashable, ExpressionConvertible {
     // Literals
     /// `NULL` literal
     case null
@@ -125,8 +125,31 @@ public indirect enum Expression: Equatable, ExpressionConvertible {
         return refs
     }
 
+    // TODO: Do we still need this?
     public var toExpression: Expression {
         return self
+    }
+
+    /// List of children from which the expression is composed. Does not go
+    /// to underlying table expressions.
+    public var hashValue: Int {
+        switch self {
+        case .null: return 0
+        case let .bool(value): return value.hashValue
+        case let .integer(value): return value.hashValue
+        case let .string(value): return value.hashValue
+        case let .attribute(value): return value.hashValue
+        case let .parameter(value): return value.hashValue
+        case let .binary(op, lhs, rhs):
+                return op.hashValue ^ lhs.hashValue ^ rhs.hashValue
+        case let .unary(op, expr): return op.hashValue ^ expr.hashValue
+        case let .function(f, exprs):
+                return exprs.reduce(f.hashValue) {
+                    acc, elem in acc ^ elem.hashValue
+                }
+        case let .alias(expr, name): return expr.hashValue ^ name.hashValue
+        case .error(_): return 0
+        }
     }
 }
 

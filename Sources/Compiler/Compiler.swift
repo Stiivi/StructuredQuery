@@ -1,6 +1,6 @@
 import Basic
 import Schema
-import Expression
+import Relation
 import Foundation
 
 // TODO: Use ResultString
@@ -34,6 +34,21 @@ extension String {
 extension Compiler: ExpressionVisitor {
     public typealias VisitorResult = ResultString<CompilerError>
 
+    /// Visit a list of expressions, separate them with comma and optionally
+    /// wrap them.
+    public func visit(expressions: [Expression], wrap: (String, String)?=nil)
+        -> VisitorResult
+    {
+        let visited = expressions.map { visit(expression: $0) }
+        let result = concatenate(visited, separator: ", ")
+
+        if let left = wrap?.0, let right = wrap?.1 {
+            return left + result + right
+        }
+        else {
+            return result
+        }
+    }
     public func visitNull() -> VisitorResult {
         return "NULL"
     }
@@ -202,6 +217,27 @@ extension Compiler: RelationVisitor {
         }
 
         return out
+    }
+
+    public func visit(group: [GroupingElement], aggregates: [Expression], relation: Relation) -> RelationResult {
+        let elements: [RelationResult] = group.map {
+            switch $0 {
+            case .expression(let expr):
+                    return visit(expression: expr)
+            case .groupingSets(let sets):
+                    return "GROUPING SETS ("
+                        + concatenate(sets.flatMap {
+                            visit(expressions: $0, wrap: ("(", ")"))
+                        }, separator: ", ")
+                        + ")"
+                    
+            case .cube(let exprs):
+                    return "CUBE (" + visit(expressions: exprs) + ")"
+            case .rollup(let exprs):
+                    return "ROLLUP (" + visit(expressions: exprs) + ")"
+            }
+        }
+        return "GROUP BY " + concatenate(elements, separator: ", ")
     }
 
     public func visit(error: ExpressionError, relation: Relation) -> RelationResult {

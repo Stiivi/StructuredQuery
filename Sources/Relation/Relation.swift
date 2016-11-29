@@ -27,7 +27,6 @@ extension QualifiedRelationName: Hashable {
     }
 }
 
-
 /// Type that can be represented as a relation
 public protocol RelationRepresentable {
     var relation: Relation { get }
@@ -40,14 +39,71 @@ public enum JoinType {
     case fullOuter
 }
 
+public enum GroupingElement: Hashable {
+    case expression(Expression)
+    case groupingSets([[Expression]])
+    case cube([Expression])
+    case rollup([Expression])
+
+
+    /// List of expressions in the grouping element. The expressions are
+    /// ordered as they appear in the grouping element. Duplicates from the
+    /// grouping sets are ignored.
+    public var expressions: [Expression] {
+        switch self {
+        case .expression(let expr): return [expr]
+        case .groupingSets(let sets): return sets.flatMap { $0 }.distinct	
+        case .cube(let exprs): return exprs
+        case .rollup(let exprs): return exprs
+        }
+    }
+
+    public var hashValue: Int {
+        switch self {
+        case .expression(let expr): return expr.hashValue
+        case .groupingSets(let sets):
+            return sets.flatMap { $0 }
+                    .reduce(0) { $0 ^ $1.hashValue }
+        case .cube(let exprs): 
+            return exprs.reduce(0) { $0 ^ $1.hashValue }
+        case .rollup(let exprs):
+            return exprs.reduce(0) { $0 ^ $1.hashValue }
+        }
+    }
+}
+
+public func ==(lhs: GroupingElement, rhs: GroupingElement) -> Bool {
+    switch (lhs, rhs) {
+    case let (.expression(l), .expression(r)) where l == r: return true
+    case let (.groupingSets(l), .groupingSets(r))
+            where l.elementsEqual(r) { $0 == $1 }: return true
+    case let (.cube(l), .cube(r)) where l == r: return true
+    case let (.rollup(l), .rollup(r)) where l == r: return true
+    default: return false
+    }
+}
+
+public enum OrderDirection {
+    case ascending
+    case descending
+}
+public enum OrderNulls {
+    case first
+    case last
+}
+
+
 // TODO: Array literal convertible
-/// Describes a relation
+/// Describes a relation expression.
 ///
+/// There are two types of relation expressions: referencable relation – one
+/// that either has a physical representation or can be directly refered to by
+/// a name and derived relation. 
 public indirect enum Relation: Equatable {
     /// No relation, used for extended projection (expressions)
     case none
 
-    /// Physical relation
+    /// Relation that is represented by a table.
     case table(Table)
 
     /// Projection of attributes or extended attributes
@@ -56,20 +112,39 @@ public indirect enum Relation: Equatable {
     /// Selection from a relation by a predicate
     case selection(Expression, Relation)
     
-    /// Rename
+    /// Renamed relation. Relations derived from the `rename` type refer to the
+    /// renamed relation as if it was represented by an existing relation. SQL
+    /// analogy would be a subquery with an alias.
     case rename(String, Relation)
 
-    /// Join
+    /// Represents a join between two relations. The elements are `join type`,
+    /// left relation, right relation and optional join predicate expression.
     // TODO: Find a better name. We prefer to keep `join` for the function name
     case ajoin(JoinType, Relation, Relation, Expression?)
 
+    /// Group
+    case group([GroupingElement], [Expression], Relation)
+
+    /// Result of a errorneous composition.
     case error(Relation, ExpressionError)
 
+    // TODO: add these
+    // case order([Expression], Relation)
+    // case limit
+    // case offset
+    // case with (as in CTEs)
+    // case having – we don't need this one, as this is .selection(.group(...))
+
     // TODO: union etc.
-    // case union(Relation)
-    // case minus(Relation)
+    // case union(Relation, type)
+    // case minus(Relation, type)
+    // case intersect(Relation, type)
 
     /// Name of the relation
+    ///
+    /// Table relations get their names from their physical table
+    /// representation. Other relations have no name unless renamed using
+    /// `.rename` expression.
     public var qualifiedName: QualifiedRelationName? {
         switch self {
         case .table(let table):
@@ -107,42 +182,8 @@ public indirect enum Relation: Equatable {
                                    relation: self)
             }
         case .projection(let selectList, _):
-            // Gather duplicate attribute names
-            let duplicates = selectList.flatMap{ $0.alias }.duplicates 
-
-            // For every attribute produce a reference that might be:
-            // - regular reference: if attribute has a name and has no
-            //   duplicate
-            // - "ambiguous" reference: if attribute has a name but has a
-            //   duplicate
-            // - anonymous reference: if attribute has no name
-            let refs: [AttributeReference] = selectList.enumerated().map {
-                i, expr in
-                if let name = expr.alias {
-
-                    let index: AttributeIndex
-
-                    if duplicates.contains(name) {
-                        index = .ambiguous 
-                    } 
-                    else {
-                        // We have a name and there is no duplicate.
-                        // We want all attributes to be like this.
-                        index = .concrete(i)
-                    }
-                    return AttributeReference(index: index,
-                                              name: name,
-                                              relation: self)
-                }
-                else {
-                    // Anonymous attribute reference
-                    return AttributeReference(index: .concrete(i),
-                                              name: nil,
-                                              relation: self)
-                }
-            }
-
-            return refs
+                return AttributeReference.collect(fromExpressions: selectList,
+                                                  relation: self)
         case .selection(_, let relation):
                 return relation.attributeReferences
         case .rename(_, let relation):
@@ -156,8 +197,12 @@ public indirect enum Relation: Equatable {
 			return attributes
         case .ajoin(_, let left, let right, _):
                 return left.attributeReferences + right.attributeReferences
+        case .group(let group, let aggregates, let relation):
+                let elements = group.flatMap {$0.expressions}
+                let all = elements.distinct + aggregates
+                return AttributeReference.collect(fromExpressions: all,
+                                                  relation: relation)
         case .error: return []
-        
         } 
     }
 
@@ -185,6 +230,9 @@ public indirect enum Relation: Equatable {
         case .rename(_, let relation): return relation.projectedExpressions
         case .ajoin(_, let left, let right, _):
                 return left.projectedExpressions + right.projectedExpressions
+        case .group(let group, let aggregates, _):
+                let elements = group.flatMap {$0.expressions}
+                return elements.distinct + aggregates
         case .error: return []
         } 
     }
@@ -200,6 +248,7 @@ public indirect enum Relation: Equatable {
         case .rename: return [self]
         case .ajoin(_, let left, let right, _):
                 return left.immediateRelations + right.immediateRelations
+        case .group(_, _, let relation): return relation.immediateRelations
         case .error: return []
         } 
     }
@@ -214,6 +263,7 @@ public indirect enum Relation: Equatable {
         case .selection(_, let relation): return relation.baseRelations
         case .rename(_, let relation): return relation.baseRelations
         case .ajoin(_, let left, let right, _): return left.baseRelations + right.baseRelations
+        case .group(_, _, let relation): return relation.baseRelations
         case .error: return []
         } 
     }
@@ -294,6 +344,10 @@ public func ==(lhs: Relation, rhs: Relation) -> Bool {
                     && lexpr == rexpr: return true
     case let (.error(lrel, lerr), .error(rrel, rerr))
             where lrel == rrel && lerr == rerr: return true
+    case let (.group(lval, lagg, lrel), .group(rval, ragg, rrel))
+            where lval.elementsEqual(rval) { $0 == $1 } 
+                    && lagg == ragg
+                    && lrel == rrel: return true
     default: return false
     }
 }

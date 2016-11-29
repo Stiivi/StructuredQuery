@@ -49,6 +49,16 @@ extension Collection where Iterator.Element: Hashable {
         return dupes
     }
 
+    /// Returns elements
+	// TODO: Make this lazy
+    public var distinct: [Iterator.Element] {
+        var seen = Set<Self.Iterator.Element>()
+        return filter {
+            elem in
+            seen.insert(elem).inserted
+        }
+    }
+
 }
 
 /*

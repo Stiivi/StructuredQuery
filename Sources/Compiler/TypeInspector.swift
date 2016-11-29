@@ -1,7 +1,7 @@
 import Basic
 import Types
 import Schema
-import Expression
+import Relation
 
 /// Expression compiler that returns expression's data type.
 public class TypeInspector: ExpressionVisitor {
